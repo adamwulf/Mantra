@@ -8,11 +8,18 @@ struct PhraseListView: View {
     @State private var showingAddPhrase = false
     @State private var newPhraseText = ""
     
+    @State private var editingPhrase: Phrase?
+    @State private var editingPhraseText = ""
+    
     var body: some View {
         NavigationStack {
             List {
                 ForEach(phrases) { phrase in
                     Text(phrase.text)
+                        .onTapGesture {
+                            editingPhrase = phrase
+                            editingPhraseText = phrase.text
+                        }
                 }
                 .onDelete(perform: deletePhrases)
             }
@@ -31,6 +38,19 @@ struct PhraseListView: View {
                     addPhrase()
                 }
             }
+            .alert("Edit Phrase", isPresented: Binding(
+                get: { editingPhrase != nil },
+                set: { if !$0 { editingPhrase = nil } }
+            )) {
+                TextField("Enter phrase", text: $editingPhraseText)
+                Button("Cancel", role: .cancel) {
+                    editingPhrase = nil
+                    editingPhraseText = ""
+                }
+                Button("Save") {
+                    saveEditedPhrase()
+                }
+            }
         }
     }
     
@@ -39,6 +59,13 @@ struct PhraseListView: View {
         let phrase = Phrase(text: newPhraseText)
         modelContext.insert(phrase)
         newPhraseText = ""
+    }
+    
+    private func saveEditedPhrase() {
+        guard let phrase = editingPhrase, !editingPhraseText.isEmpty else { return }
+        phrase.text = editingPhraseText
+        editingPhrase = nil
+        editingPhraseText = ""
     }
     
     private func deletePhrases(offsets: IndexSet) {
