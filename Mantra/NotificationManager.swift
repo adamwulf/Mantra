@@ -2,14 +2,19 @@ import Foundation
 import UserNotifications
 import Combine
 
-class NotificationManager: NSObject, ObservableObject {
+class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     static let shared = NotificationManager()
     
     @Published var isAuthorized = false
     
     override private init() {
         super.init()
+        UNUserNotificationCenter.current().delegate = self
         checkAuthorization()
+    }
+    
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .sound])
     }
     
     func requestAuthorization() {
