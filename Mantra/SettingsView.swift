@@ -5,6 +5,8 @@ struct SettingsView: View {
     @State private var schedule = Schedule.load()
     @Query private var phrases: [Phrase]
     
+    @State private var testNotificationCountdown = 0
+    
     var body: some View {
         NavigationStack {
             Form {
@@ -30,12 +32,34 @@ struct SettingsView: View {
                 }
                 
                 Section {
-                    Button("Send Test Notification") {
-                        NotificationManager.shared.scheduleTestNotification()
+                    Button(testNotificationButtonTitle) {
+                        sendTestNotification()
                     }
+                    .disabled(testNotificationCountdown > 0)
                 }
             }
             .navigationTitle("Settings")
+        }
+    }
+    
+    private var testNotificationButtonTitle: String {
+        if testNotificationCountdown > 0 {
+            return "Send Test Notification (\(testNotificationCountdown))"
+        } else {
+            return "Send Test Notification"
+        }
+    }
+    
+    private func sendTestNotification() {
+        NotificationManager.shared.scheduleTestNotification()
+        testNotificationCountdown = 5
+        
+        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
+            if testNotificationCountdown > 0 {
+                testNotificationCountdown -= 1
+            } else {
+                timer.invalidate()
+            }
         }
     }
     
