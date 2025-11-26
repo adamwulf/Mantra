@@ -55,68 +55,7 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         }
     }
     
-    func schedule(phrases: [Phrase], schedule: Schedule) {
-        cancelAll()
-        
-        guard schedule.isEnabled, !phrases.isEmpty else { return }
-        
-        let content = UNMutableNotificationContent()
-        content.sound = .default
-        
-        // Simple logic: schedule 'frequency' notifications for the next day
-        // In a real app, we'd probably schedule for the next week or so.
-        // For this prototype, let's schedule for today (if time permits) and tomorrow.
-        
-        let calendar = Calendar.current
-        let now = Date()
-        
-        // Normalize start/end times to today
-        let startComponents = calendar.dateComponents([.hour, .minute], from: schedule.startTime)
-        let endComponents = calendar.dateComponents([.hour, .minute], from: schedule.endTime)
-        
-        guard let startHour = startComponents.hour, let startMinute = startComponents.minute,
-              let endHour = endComponents.hour, let endMinute = endComponents.minute else { return }
-        
-        let todayStart = calendar.date(bySettingHour: startHour, minute: startMinute, second: 0, of: now)!
-        let todayEnd = calendar.date(bySettingHour: endHour, minute: endMinute, second: 0, of: now)!
-        
-        // Calculate duration in seconds
-        let duration = todayEnd.timeIntervalSince(todayStart)
-        guard duration > 0 else { return }
-        
-        for _ in 0..<schedule.frequency {
-            let randomOffset = Double.random(in: 0...duration)
-            let triggerDate = todayStart.addingTimeInterval(randomOffset)
-            
-            if triggerDate > now {
-                scheduleNotification(at: triggerDate, with: phrases)
-            }
-            
-            // Also schedule for tomorrow
-            if let tomorrowStart = calendar.date(byAdding: .day, value: 1, to: todayStart) {
-                 let tomorrowTriggerDate = tomorrowStart.addingTimeInterval(randomOffset)
-                 scheduleNotification(at: tomorrowTriggerDate, with: phrases)
-            }
-        }
-    }
-    
-    private func scheduleNotification(at date: Date, with phrases: [Phrase]) {
-        guard let phrase = phrases.randomElement() else { return }
-        
-        let content = UNMutableNotificationContent()
-        content.title = "Mantra"
-        content.body = phrase.text
-        content.sound = .default
-        content.interruptionLevel = .critical
-        
-        let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
-        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-        
-        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
-        
-        UNUserNotificationCenter.current().add(request)
-    }
-    
+
     func scheduleTestNotification() {
         let content = UNMutableNotificationContent()
         content.title = "Mantra Test"
@@ -148,7 +87,8 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
     }
     
     /// Schedule the next notification based on current schedule settings
-    private func scheduleNextNotification() {
+    func scheduleNextNotification() {
+        cancelAll()
         let schedule = Schedule.load()
         guard schedule.isEnabled else { return }
         
