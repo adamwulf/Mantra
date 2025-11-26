@@ -59,6 +59,7 @@ struct PhraseListView: View {
         let phrase = Phrase(text: newPhraseText)
         modelContext.insert(phrase)
         newPhraseText = ""
+        cachePhrases()
     }
     
     private func saveEditedPhrase() {
@@ -66,6 +67,7 @@ struct PhraseListView: View {
         phrase.text = editingPhraseText
         editingPhrase = nil
         editingPhraseText = ""
+        cachePhrases()
     }
     
     private func deletePhrases(offsets: IndexSet) {
@@ -74,6 +76,11 @@ struct PhraseListView: View {
                 modelContext.delete(phrases[index])
             }
         }
+        cachePhrases()
+    }
+    
+    private func cachePhrases() {
+        NotificationManager.shared.cachePhrasesForBackground(phrases)
     }
 }
 

@@ -87,6 +87,7 @@ struct SettingsView: View {
     
     private func saveAndSchedule() {
         schedule.save()
+        NotificationManager.shared.cachePhrasesForBackground(phrases)
         NotificationManager.shared.schedule(phrases: phrases, schedule: schedule)
     }
     
