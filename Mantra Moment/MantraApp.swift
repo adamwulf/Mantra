@@ -17,10 +17,29 @@ struct MantraApp: App {
     var body: some Scene {
 #if os(macOS)
         MenuBarExtra("Mantra", systemImage: "figure.mind.and.body") {
-            ContentView()
+            Button("Settings") {
+                NSApplication.shared.activate(ignoringOtherApps: true)
+                if let window = NSApplication.shared.windows.first(where: { $0.identifier?.rawValue == "main" }) {
+                    window.makeKeyAndOrderFront(nil)
+                } else {
+                    // Open new window
+                    let contentView = ContentView()
+                        .modelContainer(container)
+                    let hostingController = NSHostingController(rootView: contentView)
+                    let window = NSWindow(contentViewController: hostingController)
+                    window.identifier = NSUserInterfaceItemIdentifier("main")
+                    window.title = "Mantra"
+                    window.setContentSize(NSSize(width: 600, height: 500))
+                    window.center()
+                    window.makeKeyAndOrderFront(nil)
+                }
+            }
+            Divider()
+            Button("Quit") {
+                NSApplication.shared.terminate(nil)
+            }
         }
-        .menuBarExtraStyle(.window)
-        .modelContainer(container)
+        .menuBarExtraStyle(.menu)
 #else
         WindowGroup {
             ContentView()
