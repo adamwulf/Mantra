@@ -1,15 +1,26 @@
 import Foundation
 import UserNotifications
 import Combine
+import UIKit
 
 class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     static let shared = NotificationManager()
     
-    @Published var isAuthorized = false
+    @Published var authorizationStatus: UNAuthorizationStatus = .notDetermined
     
     override private init() {
         super.init()
         UNUserNotificationCenter.current().delegate = self
+        checkAuthorization()
+        
+        NotificationCenter.default.addObserver(self, selector: #selector(appWillEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    @objc private func appWillEnterForeground() {
         checkAuthorization()
     }
     
@@ -20,7 +31,7 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
     func requestAuthorization() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
             DispatchQueue.main.async {
-                self.isAuthorized = granted
+                self.checkAuthorization()
             }
         }
     }
@@ -28,7 +39,7 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
     func checkAuthorization() {
         UNUserNotificationCenter.current().getNotificationSettings { settings in
             DispatchQueue.main.async {
-                self.isAuthorized = (settings.authorizationStatus == .authorized)
+                self.authorizationStatus = settings.authorizationStatus
             }
         }
     }
