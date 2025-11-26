@@ -25,7 +25,7 @@ struct PhraseListView: View {
             }
             .navigationTitle("Phrases")
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .primaryAction) {
                     Button(action: { showingAddPhrase = true }) {
                         Label("Add Phrase", systemImage: "plus")
                     }
