@@ -6,7 +6,90 @@
     {
       "blend-mode" : "screen",
       "blur-material" : null,
-      "hidden" : false,
+      "hidden-specializations" : [
+        {
+          "value" : false
+        },
+        {
+          "appearance" : "light",
+          "value" : false
+        },
+        {
+          "appearance" : "dark",
+          "value" : true
+        },
+        {
+          "appearance" : "tinted",
+          "value" : true
+        }
+      ],
+      "layers" : [
+        {
+          "hidden" : true,
+          "image-name" : "meditate.png",
+          "name" : "meditate"
+        },
+        {
+          "blend-mode" : "normal",
+          "fill" : {
+            "linear-gradient" : [
+              "display-p3:0.76870,0.86797,1.00000,1.00000",
+              "srgb:0.52290,0.77735,1.00000,1.00000"
+            ],
+            "orientation" : {
+              "start" : {
+                "x" : 0.5,
+                "y" : 0
+              },
+              "stop" : {
+                "x" : 0.5,
+                "y" : 0.7
+              }
+            }
+          },
+          "image-name" : "meditate-outline.png",
+          "name" : "meditate-outline",
+          "position" : {
+            "scale" : 1.31,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
+        }
+      ],
+      "lighting" : "individual",
+      "name" : "Light",
+      "shadow" : {
+        "kind" : "layer-color",
+        "opacity" : 0.5
+      },
+      "specular" : true,
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    },
+    {
+      "blend-mode" : "screen",
+      "blur-material" : null,
+      "hidden-specializations" : [
+        {
+          "value" : false
+        },
+        {
+          "appearance" : "light",
+          "value" : true
+        },
+        {
+          "appearance" : "dark",
+          "value" : false
+        },
+        {
+          "appearance" : "tinted",
+          "value" : false
+        }
+      ],
       "layers" : [
         {
           "hidden" : true,
@@ -30,6 +113,7 @@
         }
       ],
       "lighting" : "individual",
+      "name" : "Others",
       "shadow" : {
         "kind" : "layer-color",
         "opacity" : 0.5
