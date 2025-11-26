@@ -15,10 +15,18 @@ struct MantraApp: App {
     }
     
     var body: some Scene {
+#if os(macOS)
+        MenuBarExtra("Mantra", systemImage: "figure.mind.and.body") {
+            ContentView()
+        }
+        .menuBarExtraStyle(.window)
+        .modelContainer(container)
+#else
         WindowGroup {
             ContentView()
         }
         .modelContainer(container)
+#endif
     }
     
     private func seedDefaultPhrasesIfNeeded() {

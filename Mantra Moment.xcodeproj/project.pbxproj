@@ -10,9 +10,22 @@
 		C52E27842ED587BD0089913C /* Mantra Moment.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Mantra Moment.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		C56CD2222ED6D58C00A1CBF3 /* Exceptions for "Mantra Moment" folder in "Mantra Moment" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"Mantra-Moment-Info.plist",
+			);
+			target = C52E27832ED587BD0089913C /* Mantra Moment */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		C52E27862ED587BD0089913C /* Mantra Moment */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C56CD2222ED6D58C00A1CBF3 /* Exceptions for "Mantra Moment" folder in "Mantra Moment" target */,
+			);
 			path = "Mantra Moment";
 			sourceTree = "<group>";
 		};
@@ -255,8 +268,10 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Mantra-Moment-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Mantra;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				INFOPLIST_KEY_LSUIElement = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -303,8 +318,10 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Mantra-Moment-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Mantra;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				INFOPLIST_KEY_LSUIElement = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
