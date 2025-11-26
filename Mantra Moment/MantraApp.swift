@@ -9,6 +9,9 @@ struct MantraApp: App {
         do {
             container = try ModelContainer(for: Phrase.self)
             seedDefaultPhrasesIfNeeded()
+            
+            // Verify notification is scheduled on startup
+            NotificationManager.shared.verifyNotificationScheduled()
         } catch {
             fatalError("Failed to create ModelContainer: \(error)")
         }

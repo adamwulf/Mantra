@@ -58,6 +58,21 @@ struct SettingsView: View {
                         }
                         .disabled(testNotificationCountdown > 0)
                     }
+                    
+                    if schedule.isEnabled {
+                        Section(header: Text("Next Notification")) {
+                            if let nextDate = notificationManager.nextNotificationDate {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(nextDate, style: .date)
+                                    Text(nextDate, style: .time)
+                                        .foregroundColor(.secondary)
+                                }
+                            } else {
+                                Text("No notification scheduled")
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
                 }
             }
             .navigationTitle("Settings")

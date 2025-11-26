@@ -9,6 +9,7 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
     static let shared = NotificationManager()
     
     @Published var authorizationStatus: UNAuthorizationStatus = .notDetermined
+    @Published var nextNotificationDate: Date?
     
     override private init() {
         super.init()
@@ -90,15 +91,35 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
     func scheduleNextNotification() {
         cancelAll()
         let schedule = Schedule.load()
-        guard schedule.isEnabled else { return }
+        guard schedule.isEnabled else {
+            DispatchQueue.main.async {
+                self.nextNotificationDate = nil
+            }
+            return
+        }
         
         let phrases = loadCachedPhrases()
-        guard !phrases.isEmpty else { return }
+        guard !phrases.isEmpty else {
+            DispatchQueue.main.async {
+                self.nextNotificationDate = nil
+            }
+            return
+        }
         
-        guard let nextTime = calculateNextNotificationTime(for: schedule) else { return }
+        guard let nextTime = calculateNextNotificationTime(for: schedule) else {
+            DispatchQueue.main.async {
+                self.nextNotificationDate = nil
+            }
+            return
+        }
         
         // Pick a random phrase
-        guard let phraseText = phrases.randomElement() else { return }
+        guard let phraseText = phrases.randomElement() else {
+            DispatchQueue.main.async {
+                self.nextNotificationDate = nil
+            }
+            return
+        }
         
         let content = UNMutableNotificationContent()
         content.title = "Mantra"
@@ -111,7 +132,13 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
         
-        UNUserNotificationCenter.current().add(request)
+        UNUserNotificationCenter.current().add(request) { error in
+            if error == nil {
+                DispatchQueue.main.async {
+                    self.nextNotificationDate = nextTime
+                }
+            }
+        }
     }
     
     /// Calculate when the next notification should fire based on schedule settings
@@ -161,5 +188,44 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         // If we're before today's window, schedule for later today
         let randomOffset = Double.random(in: 0...duration)
         return todayStart.addingTimeInterval(randomOffset)
+    }
+    
+    // MARK: - Notification Verification
+    
+    /// Get the next scheduled notification date
+    func getNextScheduledNotification(completion: @escaping (Date?) -> Void) {
+        UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
+            // Find the earliest notification
+            let nextDate = requests.compactMap { request -> Date? in
+                if let trigger = request.trigger as? UNCalendarNotificationTrigger,
+                   let nextTriggerDate = trigger.nextTriggerDate() {
+                    return nextTriggerDate
+                }
+                return nil
+            }.min()
+            
+            DispatchQueue.main.async {
+                self.nextNotificationDate = nextDate
+                completion(nextDate)
+            }
+        }
+    }
+    
+    /// Verify that a notification is scheduled within the next 24 hours
+    /// If not, clear all notifications and reschedule
+    func verifyNotificationScheduled() {
+        getNextScheduledNotification { nextDate in
+            let now = Date()
+            let twentyFourHoursFromNow = now.addingTimeInterval(24 * 60 * 60)
+            
+            // Check if we have a notification scheduled within the next 24 hours
+            if let nextDate = nextDate, nextDate <= twentyFourHoursFromNow {
+                // We're good, notification is scheduled
+                return
+            }
+            
+            // No notification scheduled within 24 hours, reschedule
+            self.scheduleNextNotification()
+        }
     }
 }
