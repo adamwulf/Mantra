@@ -1,6 +1,9 @@
 import SwiftUI
 import SwiftData
 import UserNotifications
+#if os(macOS)
+import AppKit
+#endif
 
 struct SettingsView: View {
     @State private var schedule = Schedule.load()
@@ -26,6 +29,10 @@ struct SettingsView: View {
 #if canImport(UIKit)
                                 if let url = URL(string: UIApplication.openSettingsURLString) {
                                     UIApplication.shared.open(url)
+                                }
+#elseif os(macOS)
+                                if let url = URL(string: "x-apple.systempreferences:com.apple.preference.notifications") {
+                                    NSWorkspace.shared.open(url)
                                 }
 #endif
                             }
