@@ -29,11 +29,11 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
     }
     
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        completionHandler([.banner, .sound])
+        completionHandler([.banner, .list, .sound])
     }
     
     func requestAuthorization() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge, .criticalAlert]) { granted, error in
             DispatchQueue.main.async {
                 self.checkAuthorization()
             }
@@ -100,6 +100,7 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         content.title = "Mantra"
         content.body = phrase.text
         content.sound = .default
+        content.interruptionLevel = .critical
         
         let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
         let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
@@ -114,6 +115,7 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         content.title = "Mantra Test"
         content.body = "This is a test notification. You got this!"
         content.sound = .default
+        content.interruptionLevel = .critical
         
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)

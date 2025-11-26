@@ -26,15 +26,7 @@ struct SettingsView: View {
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                             Button("Open Settings") {
-#if canImport(UIKit)
-                                if let url = URL(string: UIApplication.openSettingsURLString) {
-                                    UIApplication.shared.open(url)
-                                }
-#elseif os(macOS)
-                                if let url = URL(string: "x-apple.systempreferences:com.apple.preference.notifications") {
-                                    NSWorkspace.shared.open(url)
-                                }
-#endif
+                                openSettings()
                             }
                         }
                     }
@@ -96,6 +88,18 @@ struct SettingsView: View {
     private func saveAndSchedule() {
         schedule.save()
         NotificationManager.shared.schedule(phrases: phrases, schedule: schedule)
+    }
+    
+    private func openSettings() {
+#if canImport(UIKit)
+        if let url = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(url)
+        }
+#elseif os(macOS)
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.notifications") {
+            NSWorkspace.shared.open(url)
+        }
+#endif
     }
 }
 
