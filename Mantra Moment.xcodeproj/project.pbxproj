@@ -7,13 +7,13 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		C52E27842ED587BD0089913C /* Mantra.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Mantra.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C52E27842ED587BD0089913C /* Mantra Moment.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Mantra Moment.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		C52E27862ED587BD0089913C /* Mantra */ = {
+		C52E27862ED587BD0089913C /* Mantra Moment */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Mantra;
+			path = "Mantra Moment";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -32,7 +32,7 @@
 		C52E277B2ED587BD0089913C = {
 			isa = PBXGroup;
 			children = (
-				C52E27862ED587BD0089913C /* Mantra */,
+				C52E27862ED587BD0089913C /* Mantra Moment */,
 				C52E27852ED587BD0089913C /* Products */,
 			);
 			sourceTree = "<group>";
@@ -40,7 +40,7 @@
 		C52E27852ED587BD0089913C /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				C52E27842ED587BD0089913C /* Mantra.app */,
+				C52E27842ED587BD0089913C /* Mantra Moment.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -48,9 +48,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		C52E27832ED587BD0089913C /* Mantra */ = {
+		C52E27832ED587BD0089913C /* Mantra Moment */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = C52E278F2ED587BF0089913C /* Build configuration list for PBXNativeTarget "Mantra" */;
+			buildConfigurationList = C52E278F2ED587BF0089913C /* Build configuration list for PBXNativeTarget "Mantra Moment" */;
 			buildPhases = (
 				C52E27802ED587BD0089913C /* Sources */,
 				C52E27812ED587BD0089913C /* Frameworks */,
@@ -61,13 +61,13 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				C52E27862ED587BD0089913C /* Mantra */,
+				C52E27862ED587BD0089913C /* Mantra Moment */,
 			);
-			name = Mantra;
+			name = "Mantra Moment";
 			packageProductDependencies = (
 			);
 			productName = Mantra;
-			productReference = C52E27842ED587BD0089913C /* Mantra.app */;
+			productReference = C52E27842ED587BD0089913C /* Mantra Moment.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -85,7 +85,7 @@
 					};
 				};
 			};
-			buildConfigurationList = C52E277F2ED587BD0089913C /* Build configuration list for PBXProject "Mantra" */;
+			buildConfigurationList = C52E277F2ED587BD0089913C /* Build configuration list for PBXProject "Mantra Moment" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -99,7 +99,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				C52E27832ED587BD0089913C /* Mantra */,
+				C52E27832ED587BD0089913C /* Mantra Moment */,
 			);
 		};
 /* End PBXProject section */
@@ -338,7 +338,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		C52E277F2ED587BD0089913C /* Build configuration list for PBXProject "Mantra" */ = {
+		C52E277F2ED587BD0089913C /* Build configuration list for PBXProject "Mantra Moment" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C52E278D2ED587BF0089913C /* Debug */,
@@ -347,7 +347,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		C52E278F2ED587BF0089913C /* Build configuration list for PBXNativeTarget "Mantra" */ = {
+		C52E278F2ED587BF0089913C /* Build configuration list for PBXNativeTarget "Mantra Moment" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C52E27902ED587BF0089913C /* Debug */,
