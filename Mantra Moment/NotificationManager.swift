@@ -1,7 +1,9 @@
 import Foundation
 import UserNotifications
 import Combine
+#if canImport(UIKit)
 import UIKit
+#endif
 
 class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     static let shared = NotificationManager()
@@ -13,7 +15,9 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         UNUserNotificationCenter.current().delegate = self
         checkAuthorization()
         
+#if canImport(UIKit)
         NotificationCenter.default.addObserver(self, selector: #selector(appWillEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
+#endif
     }
     
     deinit {

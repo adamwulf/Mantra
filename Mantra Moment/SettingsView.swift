@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UserNotifications
 
 struct SettingsView: View {
     @State private var schedule = Schedule.load()
@@ -22,9 +23,11 @@ struct SettingsView: View {
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                             Button("Open Settings") {
+#if canImport(UIKit)
                                 if let url = URL(string: UIApplication.openSettingsURLString) {
                                     UIApplication.shared.open(url)
                                 }
+#endif
                             }
                         }
                     }
