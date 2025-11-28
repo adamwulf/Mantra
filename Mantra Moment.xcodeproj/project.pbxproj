@@ -10,22 +10,9 @@
 		C52E27842ED587BD0089913C /* Mantra Moment.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Mantra Moment.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		C56CD2242ED7816A00A1CBF3 /* Exceptions for "Mantra Moment" folder in "Mantra Moment" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				"Mantra-Moment-Info.plist",
-			);
-			target = C52E27832ED587BD0089913C /* Mantra Moment */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		C52E27862ED587BD0089913C /* Mantra Moment */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				C56CD2242ED7816A00A1CBF3 /* Exceptions for "Mantra Moment" folder in "Mantra Moment" target */,
-			);
 			path = "Mantra Moment";
 			sourceTree = "<group>";
 		};
