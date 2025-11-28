@@ -23,9 +23,11 @@ struct PhraseListView: View {
                             .onSubmit {
                                 saveEditedPhrase()
                             }
+                        #if os(macOS)
                             .onExitCommand {
                                 cancelEditing()
                             }
+                        #endif
                     } else {
                         Text(phrase.text)
                             .onTapGesture {
