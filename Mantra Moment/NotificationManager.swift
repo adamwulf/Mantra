@@ -74,20 +74,26 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
     }
     
-    // MARK: - Continuous Rescheduling
+    // MARK: - Scheduled Entry Support
     
     /// Cache phrases to UserDefaults for background access
     func cachePhrasesForBackground(_ phrases: [Phrase]) {
-        let phraseTexts = phrases.filter { $0.isEnabled }.map { $0.text }
-        UserDefaults.standard.set(phraseTexts, forKey: "CachedPhrases")
+        let phraseDict = Dictionary(uniqueKeysWithValues: phrases.filter { $0.isEnabled }.map { ($0.id, $0.text) })
+        if let data = try? JSONEncoder().encode(phraseDict) {
+            UserDefaults.standard.set(data, forKey: "CachedPhrases")
+        }
     }
     
     /// Load cached phrases from UserDefaults
-    private func loadCachedPhrases() -> [String] {
-        return UserDefaults.standard.stringArray(forKey: "CachedPhrases") ?? []
+    private func loadCachedPhrases() -> [UUID: String] {
+        guard let data = UserDefaults.standard.data(forKey: "CachedPhrases"),
+              let phrases = try? JSONDecoder().decode([UUID: String].self, from: data) else {
+            return [:]
+        }
+        return phrases
     }
     
-    /// Schedule the next notification based on current schedule settings
+    /// Schedule notifications for all enabled scheduled entries
     func scheduleNextNotification() {
         cancelAll()
         let schedule = Schedule.load()
@@ -106,43 +112,67 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
             return
         }
         
-        guard let nextTime = calculateNextNotificationTime(for: schedule) else {
+        let enabledEntries = schedule.scheduledEntries.filter { $0.isEnabled }
+        guard !enabledEntries.isEmpty else {
             DispatchQueue.main.async {
                 self.nextNotificationDate = nil
             }
             return
         }
         
-        // Pick a random phrase
-        guard let phraseText = phrases.randomElement() else {
-            DispatchQueue.main.async {
-                self.nextNotificationDate = nil
+        // Calculate times for all entries
+        let times = calculateNotificationTimes(for: enabledEntries, schedule: schedule)
+        
+        var earliestTime: Date?
+        
+        // Schedule each entry
+        for (entry, time) in zip(enabledEntries, times) {
+            guard let phraseText = resolvePhrase(for: entry, phrases: phrases) else {
+                continue
             }
-            return
-        }
-        
-        let content = UNMutableNotificationContent()
-        content.title = "Mantra"
-        content.body = phraseText
-        content.sound = .default
-        content.interruptionLevel = .critical
-        
-        let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: nextTime)
-        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-        
-        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
-        
-        UNUserNotificationCenter.current().add(request) { error in
-            if error == nil {
-                DispatchQueue.main.async {
-                    self.nextNotificationDate = nextTime
+            
+            let content = UNMutableNotificationContent()
+            content.title = "Mantra"
+            content.body = phraseText
+            content.sound = .default
+            content.interruptionLevel = .critical
+            
+            let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: time)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+            
+            let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
+            
+            UNUserNotificationCenter.current().add(request) { error in
+                if error == nil {
+                    DispatchQueue.main.async {
+                        if earliestTime == nil || time < earliestTime! {
+                            earliestTime = time
+                            self.nextNotificationDate = time
+                        }
+                    }
                 }
+            }
+        }
+        
+        if let earliest = earliestTime {
+            DispatchQueue.main.async {
+                self.nextNotificationDate = earliest
             }
         }
     }
     
-    /// Calculate when the next notification should fire based on schedule settings
-    private func calculateNextNotificationTime(for schedule: Schedule) -> Date? {
+    /// Resolve the phrase text for a scheduled entry
+    private func resolvePhrase(for entry: ScheduledEntry, phrases: [UUID: String]) -> String? {
+        switch entry.phraseMode {
+        case .specific(let phraseId):
+            return phrases[phraseId]
+        case .random:
+            return phrases.values.randomElement()
+        }
+    }
+    
+    /// Calculate notification times for all entries
+    private func calculateNotificationTimes(for entries: [ScheduledEntry], schedule: Schedule) -> [Date] {
         let calendar = Calendar.current
         let now = Date()
         
@@ -151,43 +181,118 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         let endComponents = calendar.dateComponents([.hour, .minute], from: schedule.endTime)
         
         guard let startHour = startComponents.hour, let startMinute = startComponents.minute,
-              let endHour = endComponents.hour, let endMinute = endComponents.minute else { return nil }
+              let endHour = endComponents.hour, let endMinute = endComponents.minute else {
+            return []
+        }
         
         let todayStart = calendar.date(bySettingHour: startHour, minute: startMinute, second: 0, of: now)!
         let todayEnd = calendar.date(bySettingHour: endHour, minute: endMinute, second: 0, of: now)!
         
-        // Calculate the duration of the notification window
-        let duration = todayEnd.timeIntervalSince(todayStart)
-        guard duration > 0 else { return nil }
+        // Determine if we should schedule for today or tomorrow
+        let useToday = now < todayEnd
+        let targetStart = useToday ? todayStart : calendar.date(byAdding: .day, value: 1, to: todayStart)!
+        let targetEnd = useToday ? todayEnd : calendar.date(byAdding: .day, value: 1, to: todayEnd)!
         
-        // Calculate average interval between notifications based on frequency
-        let averageInterval = duration / Double(schedule.frequency)
+        // Separate entries by time mode
+        var specificTimes: [Date] = []
+        var randomCount = 0
         
-        // If we're currently within today's window, schedule for later today
-        if now >= todayStart && now < todayEnd {
-            // Schedule the next notification at least averageInterval from now
-            let nextTime = now.addingTimeInterval(averageInterval)
+        for entry in entries {
+            switch entry.timeMode {
+            case .specific(let hour, let minute):
+                if let specificTime = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: targetStart) {
+                    // If specific time is in the past today, schedule for tomorrow
+                    if specificTime < now && useToday {
+                        if let tomorrowTime = calendar.date(byAdding: .day, value: 1, to: specificTime) {
+                            specificTimes.append(tomorrowTime)
+                        }
+                    } else {
+                        specificTimes.append(specificTime)
+                    }
+                }
+            case .random:
+                randomCount += 1
+            }
+        }
+        
+        // Calculate random times with intelligent spacing
+        let randomTimes = calculateRandomTimes(count: randomCount, start: targetStart, end: targetEnd, avoid: specificTimes)
+        
+        // Combine and sort all times, then return in original entry order
+        var allTimes: [Date] = []
+        var randomIndex = 0
+        
+        for entry in entries {
+            switch entry.timeMode {
+            case .specific:
+                if let time = specificTimes.first {
+                    allTimes.append(time)
+                    specificTimes.removeFirst()
+                }
+            case .random:
+                if randomIndex < randomTimes.count {
+                    allTimes.append(randomTimes[randomIndex])
+                    randomIndex += 1
+                }
+            }
+        }
+        
+        return allTimes
+    }
+    
+    /// Calculate random times with intelligent spacing
+    private func calculateRandomTimes(count: Int, start: Date, end: Date, avoid: [Date]) -> [Date] {
+        guard count > 0 else { return [] }
+        
+        let duration = end.timeIntervalSince(start)
+        guard duration > 0 else { return [] }
+        
+        // Divide the window into segments
+        let segmentDuration = duration / Double(count)
+        var times: [Date] = []
+        
+        for i in 0..<count {
+            let segmentStart = start.addingTimeInterval(Double(i) * segmentDuration)
+            let segmentEnd = start.addingTimeInterval(Double(i + 1) * segmentDuration)
             
-            // If that would be past today's end time, schedule for tomorrow
-            if nextTime > todayEnd {
-                guard let tomorrowStart = calendar.date(byAdding: .day, value: 1, to: todayStart) else { return nil }
-                let randomOffset = Double.random(in: 0...duration)
-                return tomorrowStart.addingTimeInterval(randomOffset)
+            // Add randomization within the segment (±15 minutes or segment size, whichever is smaller)
+            let maxRandomization = min(900.0, segmentDuration / 2) // 15 minutes = 900 seconds
+            let randomOffset = Double.random(in: -maxRandomization...maxRandomization)
+            let segmentMid = segmentStart.addingTimeInterval(segmentDuration / 2)
+            var proposedTime = segmentMid.addingTimeInterval(randomOffset)
+            
+            // Ensure it's within the segment bounds
+            proposedTime = max(segmentStart, min(segmentEnd, proposedTime))
+            
+            // Ensure minimum 30-minute spacing from specific times
+            let minSpacing: TimeInterval = 1800 // 30 minutes
+            var isTooClose = false
+            for avoidTime in avoid {
+                if abs(proposedTime.timeIntervalSince(avoidTime)) < minSpacing {
+                    isTooClose = true
+                    break
+                }
             }
             
-            return nextTime
+            // If too close to a specific time, shift it
+            if isTooClose {
+                // Try shifting forward first
+                var shiftedTime = proposedTime.addingTimeInterval(minSpacing)
+                if shiftedTime <= segmentEnd {
+                    proposedTime = shiftedTime
+                } else {
+                    // Try shifting backward
+                    shiftedTime = proposedTime.addingTimeInterval(-minSpacing)
+                    if shiftedTime >= segmentStart {
+                        proposedTime = shiftedTime
+                    }
+                }
+            }
+            
+            times.append(proposedTime)
         }
         
-        // If we're past today's window, schedule for tomorrow
-        if now >= todayEnd {
-            guard let tomorrowStart = calendar.date(byAdding: .day, value: 1, to: todayStart) else { return nil }
-            let randomOffset = Double.random(in: 0...duration)
-            return tomorrowStart.addingTimeInterval(randomOffset)
-        }
-        
-        // If we're before today's window, schedule for later today
-        let randomOffset = Double.random(in: 0...duration)
-        return todayStart.addingTimeInterval(randomOffset)
+        return times.sorted()
     }
     
     // MARK: - Notification Verification

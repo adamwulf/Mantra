@@ -10,6 +10,8 @@ struct SettingsView: View {
     @Query private var phrases: [Phrase]
     
     @State private var testNotificationCountdown = 0
+    @State private var showingAddEntry = false
+    @State private var editingEntry: ScheduledEntry?
     
     @ObservedObject var notificationManager = NotificationManager.shared
     
@@ -31,7 +33,7 @@ struct SettingsView: View {
                         }
                     }
                 } else {
-                    Section(header: Text("Notifications")) {
+                    Section {
                         Toggle("Enable Notifications", isOn: $schedule.isEnabled)
                             .onChange(of: schedule.isEnabled) { oldValue, newValue in
                                 if newValue {
@@ -41,42 +43,110 @@ struct SettingsView: View {
                             }
                         
                         if schedule.isEnabled {
-                            DatePicker("Start Time", selection: $schedule.startTime, displayedComponents: .hourAndMinute)
-                                .onChange(of: schedule.startTime) { _, _ in saveAndSchedule() }
-                            
-                            DatePicker("End Time", selection: $schedule.endTime, displayedComponents: .hourAndMinute)
-                                .onChange(of: schedule.endTime) { _, _ in saveAndSchedule() }
-                            
-                            Stepper("Frequency: \(schedule.frequency) times/day", value: $schedule.frequency, in: 1...20)
-                                .onChange(of: schedule.frequency) { _, _ in saveAndSchedule() }
+                            HStack {
+                                DatePicker("Start", selection: $schedule.startTime, displayedComponents: .hourAndMinute)
+                                    .labelsHidden()
+                                Text("to")
+                                    .foregroundColor(.secondary)
+                                DatePicker("End", selection: $schedule.endTime, displayedComponents: .hourAndMinute)
+                                    .labelsHidden()
+                            }
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .onChange(of: schedule.startTime) { _, _ in saveAndSchedule() }
+                            .onChange(of: schedule.endTime) { _, _ in saveAndSchedule() }
                         }
-                    }
-                    
-                    Section {
-                        Button(testNotificationButtonTitle) {
-                            sendTestNotification()
+                    } header: {
+                        Text("General")
+                            .font(.headline)
+                    } footer: {
+                        if schedule.isEnabled {
+                            Text("Notifications will be scheduled between these times.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
-                        .disabled(testNotificationCountdown > 0)
                     }
                     
                     if schedule.isEnabled {
-                        Section(header: Text("Next Notification")) {
+                        Divider()
+                            .padding(.vertical, 8)
+                        
+                        Section {
+                            if schedule.scheduledEntries.isEmpty {
+                                Text("No scheduled entries")
+                                    .foregroundColor(.secondary)
+                                    .italic()
+                            } else {
+                                ForEach(schedule.scheduledEntries) { entry in
+                                    ScheduledEntryRow(
+                                        entry: entry,
+                                        phrases: phraseDictionary,
+                                        onToggle: { isEnabled in
+                                            toggleEntry(entry, isEnabled: isEnabled)
+                                        }
+                                    )
+                                    .contentShape(Rectangle())
+                                    .onTapGesture {
+                                        editingEntry = entry
+                                    }
+                                    .listRowBackground(Color.clear)
+                                }
+                                .onDelete(perform: deleteEntries)
+                            }
+                            
+                            Button(action: { showingAddEntry = true }) {
+                                Label("Add Schedule", systemImage: "plus.circle.fill")
+                            }
+                            .listRowBackground(Color.clear)
+                        } header: {
+                            Text("Schedule")
+                                .font(.headline)
+                        }
+                    }
+                    
+                    if schedule.isEnabled {
+                        Divider()
+                            .padding(.vertical, 8)
+                        
+                        Section(header: Text("Status").font(.headline)) {
                             if let nextDate = notificationManager.nextNotificationDate {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(nextDate, style: .date)
-                                    Text(nextDate, style: .time)
+                                HStack {
+                                    Text("Next Notification")
+                                    Spacer()
+                                    Text(nextDate, style: .relative)
                                         .foregroundColor(.secondary)
                                 }
                             } else {
                                 Text("No notification scheduled")
                                     .foregroundColor(.secondary)
                             }
+                            
+                            Button(testNotificationButtonTitle) {
+                                sendTestNotification()
+                            }
+                            .disabled(testNotificationCountdown > 0)
                         }
                     }
                 }
             }
+            .padding()
+            .scrollContentBackground(.hidden)
+            .background(Color.clear)
             .navigationTitle("Settings")
+            .sheet(isPresented: $showingAddEntry) {
+                ScheduledEntryEditView(entry: nil) { newEntry in
+                    addEntry(newEntry)
+                }
+            }
+            .sheet(item: $editingEntry) { entry in
+                ScheduledEntryEditView(entry: entry) { updatedEntry in
+                    updateEntry(updatedEntry)
+                }
+            }
         }
+    }
+    
+    private var phraseDictionary: [UUID: String] {
+        Dictionary(uniqueKeysWithValues: phrases.map { ($0.id, $0.text) })
     }
     
     private var testNotificationButtonTitle: String {
@@ -98,6 +168,30 @@ struct SettingsView: View {
                 timer.invalidate()
             }
         }
+    }
+    
+    private func addEntry(_ entry: ScheduledEntry) {
+        schedule.scheduledEntries.append(entry)
+        saveAndSchedule()
+    }
+    
+    private func updateEntry(_ entry: ScheduledEntry) {
+        if let index = schedule.scheduledEntries.firstIndex(where: { $0.id == entry.id }) {
+            schedule.scheduledEntries[index] = entry
+            saveAndSchedule()
+        }
+    }
+    
+    private func toggleEntry(_ entry: ScheduledEntry, isEnabled: Bool) {
+        if let index = schedule.scheduledEntries.firstIndex(where: { $0.id == entry.id }) {
+            schedule.scheduledEntries[index].isEnabled = isEnabled
+            saveAndSchedule()
+        }
+    }
+    
+    private func deleteEntries(offsets: IndexSet) {
+        schedule.scheduledEntries.remove(atOffsets: offsets)
+        saveAndSchedule()
     }
     
     private func saveAndSchedule() {

@@ -3,13 +3,13 @@ import Foundation
 struct Schedule: Codable {
     var startTime: Date
     var endTime: Date
-    var frequency: Int
+    var scheduledEntries: [ScheduledEntry]
     var isEnabled: Bool
     
     static let defaultSchedule = Schedule(
         startTime: Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: Date()) ?? Date(),
         endTime: Calendar.current.date(bySettingHour: 17, minute: 0, second: 0, of: Date()) ?? Date(),
-        frequency: 5,
+        scheduledEntries: [],
         isEnabled: false
     )
 }
