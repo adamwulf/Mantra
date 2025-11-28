@@ -10,6 +10,8 @@ struct SettingsView: View {
     @Query private var phrases: [Phrase]
     
     @State private var testNotificationCountdown = 0
+    @State private var showingAddEntry = false
+    @State private var editingEntry: ScheduledEntry?
     
     @ObservedObject var notificationManager = NotificationManager.shared
     
@@ -46,9 +48,34 @@ struct SettingsView: View {
                             
                             DatePicker("End Time", selection: $schedule.endTime, displayedComponents: .hourAndMinute)
                                 .onChange(of: schedule.endTime) { _, _ in saveAndSchedule() }
+                        }
+                    }
+                    
+                    if schedule.isEnabled {
+                        Section(header: Text("Scheduled Entries")) {
+                            if schedule.scheduledEntries.isEmpty {
+                                Text("No scheduled entries")
+                                    .foregroundColor(.secondary)
+                                    .italic()
+                            } else {
+                                ForEach(schedule.scheduledEntries) { entry in
+                                    ScheduledEntryRow(
+                                        entry: entry,
+                                        phrases: phraseDictionary,
+                                        onToggle: { isEnabled in
+                                            toggleEntry(entry, isEnabled: isEnabled)
+                                        }
+                                    )
+                                    .onTapGesture {
+                                        editingEntry = entry
+                                    }
+                                }
+                                .onDelete(perform: deleteEntries)
+                            }
                             
-                            Stepper("Frequency: \(schedule.frequency) times/day", value: $schedule.frequency, in: 1...20)
-                                .onChange(of: schedule.frequency) { _, _ in saveAndSchedule() }
+                            Button(action: { showingAddEntry = true }) {
+                                Label("Add Entry", systemImage: "plus")
+                            }
                         }
                     }
                     
@@ -76,7 +103,21 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .sheet(isPresented: $showingAddEntry) {
+                ScheduledEntryEditView(entry: nil) { newEntry in
+                    addEntry(newEntry)
+                }
+            }
+            .sheet(item: $editingEntry) { entry in
+                ScheduledEntryEditView(entry: entry) { updatedEntry in
+                    updateEntry(updatedEntry)
+                }
+            }
         }
+    }
+    
+    private var phraseDictionary: [UUID: String] {
+        Dictionary(uniqueKeysWithValues: phrases.map { ($0.id, $0.text) })
     }
     
     private var testNotificationButtonTitle: String {
@@ -98,6 +139,30 @@ struct SettingsView: View {
                 timer.invalidate()
             }
         }
+    }
+    
+    private func addEntry(_ entry: ScheduledEntry) {
+        schedule.scheduledEntries.append(entry)
+        saveAndSchedule()
+    }
+    
+    private func updateEntry(_ entry: ScheduledEntry) {
+        if let index = schedule.scheduledEntries.firstIndex(where: { $0.id == entry.id }) {
+            schedule.scheduledEntries[index] = entry
+            saveAndSchedule()
+        }
+    }
+    
+    private func toggleEntry(_ entry: ScheduledEntry, isEnabled: Bool) {
+        if let index = schedule.scheduledEntries.firstIndex(where: { $0.id == entry.id }) {
+            schedule.scheduledEntries[index].isEnabled = isEnabled
+            saveAndSchedule()
+        }
+    }
+    
+    private func deleteEntries(offsets: IndexSet) {
+        schedule.scheduledEntries.remove(atOffsets: offsets)
+        saveAndSchedule()
     }
     
     private func saveAndSchedule() {
