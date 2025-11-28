@@ -6,13 +6,24 @@ struct ScheduledEntryRow: View {
     let onToggle: (Bool) -> Void
     
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
+            Image(systemName: phraseIconName)
+                .font(.title2)
+                .foregroundColor(.accentColor)
+                .frame(width: 24)
+            
             VStack(alignment: .leading, spacing: 4) {
                 Text(entry.phraseDisplayText(phrases: phrases))
                     .font(.body)
-                Text(entry.timeDisplayText())
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                
+                HStack(spacing: 4) {
+                    Image(systemName: timeIconName)
+                        .font(.caption)
+                    Text(entry.timeDisplayText())
+                        .font(.caption)
+                }
+                .foregroundColor(.secondary)
             }
             
             Spacer()
@@ -23,6 +34,21 @@ struct ScheduledEntryRow: View {
             ))
             .labelsHidden()
         }
+        .padding(.vertical, 4)
         .contentShape(Rectangle())
+    }
+    
+    private var phraseIconName: String {
+        switch entry.phraseMode {
+        case .random: return "shuffle"
+        case .specific: return "text.quote"
+        }
+    }
+    
+    private var timeIconName: String {
+        switch entry.timeMode {
+        case .random: return "sparkles"
+        case .specific: return "clock"
+        }
     }
 }

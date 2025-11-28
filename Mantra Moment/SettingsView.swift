@@ -33,7 +33,7 @@ struct SettingsView: View {
                         }
                     }
                 } else {
-                    Section(header: Text("Notifications")) {
+                    Section {
                         Toggle("Enable Notifications", isOn: $schedule.isEnabled)
                             .onChange(of: schedule.isEnabled) { oldValue, newValue in
                                 if newValue {
@@ -43,16 +43,34 @@ struct SettingsView: View {
                             }
                         
                         if schedule.isEnabled {
-                            DatePicker("Start Time", selection: $schedule.startTime, displayedComponents: .hourAndMinute)
-                                .onChange(of: schedule.startTime) { _, _ in saveAndSchedule() }
-                            
-                            DatePicker("End Time", selection: $schedule.endTime, displayedComponents: .hourAndMinute)
-                                .onChange(of: schedule.endTime) { _, _ in saveAndSchedule() }
+                            HStack {
+                                DatePicker("Start", selection: $schedule.startTime, displayedComponents: .hourAndMinute)
+                                    .labelsHidden()
+                                Text("to")
+                                    .foregroundColor(.secondary)
+                                DatePicker("End", selection: $schedule.endTime, displayedComponents: .hourAndMinute)
+                                    .labelsHidden()
+                            }
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .onChange(of: schedule.startTime) { _, _ in saveAndSchedule() }
+                            .onChange(of: schedule.endTime) { _, _ in saveAndSchedule() }
+                        }
+                    } header: {
+                        Text("General")
+                            .font(.headline)
+                    } footer: {
+                        if schedule.isEnabled {
+                            Text("Notifications will be scheduled between these times.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
                     }
                     
                     if schedule.isEnabled {
-                        Section(header: Text("Scheduled Entries")) {
+                        Divider()
+                            .padding(.vertical, 8)
+                        
+                        Section {
                             if schedule.scheduledEntries.isEmpty {
                                 Text("No scheduled entries")
                                     .foregroundColor(.secondary)
@@ -66,42 +84,53 @@ struct SettingsView: View {
                                             toggleEntry(entry, isEnabled: isEnabled)
                                         }
                                     )
+                                    .contentShape(Rectangle())
                                     .onTapGesture {
                                         editingEntry = entry
                                     }
+                                    .listRowBackground(Color.clear)
                                 }
                                 .onDelete(perform: deleteEntries)
                             }
                             
                             Button(action: { showingAddEntry = true }) {
-                                Label("Add Entry", systemImage: "plus")
+                                Label("Add Schedule", systemImage: "plus.circle.fill")
                             }
+                            .listRowBackground(Color.clear)
+                        } header: {
+                            Text("Schedule")
+                                .font(.headline)
                         }
-                    }
-                    
-                    Section {
-                        Button(testNotificationButtonTitle) {
-                            sendTestNotification()
-                        }
-                        .disabled(testNotificationCountdown > 0)
                     }
                     
                     if schedule.isEnabled {
-                        Section(header: Text("Next Notification")) {
+                        Divider()
+                            .padding(.vertical, 8)
+                        
+                        Section(header: Text("Status").font(.headline)) {
                             if let nextDate = notificationManager.nextNotificationDate {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(nextDate, style: .date)
-                                    Text(nextDate, style: .time)
+                                HStack {
+                                    Text("Next Notification")
+                                    Spacer()
+                                    Text(nextDate, style: .relative)
                                         .foregroundColor(.secondary)
                                 }
                             } else {
                                 Text("No notification scheduled")
                                     .foregroundColor(.secondary)
                             }
+                            
+                            Button(testNotificationButtonTitle) {
+                                sendTestNotification()
+                            }
+                            .disabled(testNotificationCountdown > 0)
                         }
                     }
                 }
             }
+            .padding()
+            .scrollContentBackground(.hidden)
+            .background(Color.clear)
             .navigationTitle("Settings")
             .sheet(isPresented: $showingAddEntry) {
                 ScheduledEntryEditView(entry: nil) { newEntry in

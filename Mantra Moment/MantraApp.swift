@@ -70,7 +70,9 @@ struct MantraApp: App {
                     "Work the problem.",
                     "Obstacles are on the way not in the way.",
                     "Inspiration only shows up when you do.",
-                    "You only see the doors you're facing."
+                    "You only see the doors you're facing.",
+                    "Slow down. Be methodical.",
+                    "It's ok to reschedule or say no."
                 ]
                 
                 for text in defaultPhrases {
