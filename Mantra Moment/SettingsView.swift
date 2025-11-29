@@ -67,8 +67,10 @@ struct SettingsView: View {
                     }
                     
                     if schedule.isEnabled {
+#if os(macOS)
                         Divider()
                             .padding(.vertical, 8)
+#endif
                         
                         Section {
                             if schedule.scheduledEntries.isEmpty {
@@ -104,8 +106,10 @@ struct SettingsView: View {
                     }
                     
                     if schedule.isEnabled {
+#if os(macOS)
                         Divider()
                             .padding(.vertical, 8)
+#endif
                         
                         Section(header: Text("Status").font(.headline)) {
                             if let nextDate = notificationManager.nextNotificationDate {
