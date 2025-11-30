@@ -200,14 +200,16 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         for entry in entries {
             switch entry.timeMode {
             case .specific(let hour, let minute):
-                if let specificTime = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: targetStart) {
-                    // If specific time is in the past today, schedule for tomorrow
-                    if specificTime < now && useToday {
-                        if let tomorrowTime = calendar.date(byAdding: .day, value: 1, to: specificTime) {
+                // For specific times, we always try to schedule for today first
+                if let specificTimeToday = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: now) {
+                    if specificTimeToday > now {
+                        // It's in the future today, so use it
+                        specificTimes.append(specificTimeToday)
+                    } else {
+                        // It's in the past today, so schedule for tomorrow
+                        if let tomorrowTime = calendar.date(byAdding: .day, value: 1, to: specificTimeToday) {
                             specificTimes.append(tomorrowTime)
                         }
-                    } else {
-                        specificTimes.append(specificTime)
                     }
                 }
             case .random:
