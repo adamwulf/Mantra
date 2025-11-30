@@ -171,6 +171,52 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         }
     }
     
+    // MARK: - Caching
+    
+    struct CachedSchedule: Codable {
+        let date: Date
+        let scheduleData: Data
+        let times: [Date]
+    }
+    
+    private func getCachedSchedule(for date: Date, schedule: Schedule) -> [Date]? {
+        guard let data = UserDefaults.standard.data(forKey: "CachedSchedule"),
+              let cache = try? JSONDecoder().decode(CachedSchedule.self, from: data) else {
+            return nil
+        }
+        
+        // Check if cache is for the same date
+        if !Calendar.current.isDate(cache.date, inSameDayAs: date) {
+            return nil
+        }
+        
+        // Check if schedule settings match
+        let encoder = JSONEncoder()
+        if #available(iOS 11.0, macOS 10.13, *) {
+            encoder.outputFormatting = .sortedKeys
+        }
+        
+        guard let currentScheduleData = try? encoder.encode(schedule),
+              cache.scheduleData == currentScheduleData else {
+            return nil
+        }
+        
+        return cache.times
+    }
+    
+    private func saveCachedSchedule(_ times: [Date], for date: Date, schedule: Schedule) {
+        let encoder = JSONEncoder()
+        if #available(iOS 11.0, macOS 10.13, *) {
+            encoder.outputFormatting = .sortedKeys
+        }
+        
+        guard let scheduleData = try? encoder.encode(schedule) else { return }
+        let cache = CachedSchedule(date: date, scheduleData: scheduleData, times: times)
+        if let data = try? encoder.encode(cache) {
+            UserDefaults.standard.set(data, forKey: "CachedSchedule")
+        }
+    }
+
     /// Calculate notification times for all entries
     private func calculateNotificationTimes(for entries: [ScheduledEntry], schedule: Schedule) -> [Date] {
         let calendar = Calendar.current
@@ -193,6 +239,11 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         let targetStart = useToday ? todayStart : calendar.date(byAdding: .day, value: 1, to: todayStart)!
         let targetEnd = useToday ? todayEnd : calendar.date(byAdding: .day, value: 1, to: todayEnd)!
         
+        // Check cache first
+        if let cachedTimes = getCachedSchedule(for: targetStart, schedule: schedule) {
+            return cachedTimes
+        }
+
         // Separate entries by time mode
         var specificTimes: [Date] = []
         var randomCount = 0
@@ -238,6 +289,9 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
                 }
             }
         }
+        
+        // Save to cache
+        saveCachedSchedule(allTimes, for: targetStart, schedule: schedule)
         
         return allTimes
     }
