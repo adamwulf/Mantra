@@ -123,7 +123,15 @@ struct SettingsView: View {
                                 Text("No notification scheduled")
                                     .foregroundColor(.secondary)
                             }
-                            
+
+                            HStack {
+                                Text("Background Refresh")
+                                Spacer()
+                                Text(notificationManager.backgroundRefreshStatus.rawValue)
+                                    .foregroundColor(backgroundRefreshStatusColor)
+                                    .font(.caption)
+                            }
+
                             Button(testNotificationButtonTitle) {
                                 sendTestNotification()
                             }
@@ -158,6 +166,19 @@ struct SettingsView: View {
             return "Send Test Notification (\(testNotificationCountdown))"
         } else {
             return "Send Test Notification"
+        }
+    }
+
+    private var backgroundRefreshStatusColor: Color {
+        switch notificationManager.backgroundRefreshStatus {
+        case .scheduled:
+            return .green
+        case .unavailable:
+            return .orange
+        case .notPermitted, .unknown:
+            return .red
+        case .tooManyRequests:
+            return .yellow
         }
     }
     

@@ -14,6 +14,15 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
 
     @Published var authorizationStatus: UNAuthorizationStatus = .notDetermined
     @Published var nextNotificationDate: Date?
+    @Published var backgroundRefreshStatus: BackgroundRefreshStatus = .unknown
+
+    enum BackgroundRefreshStatus: String {
+        case unknown = "Unknown"
+        case scheduled = "Scheduled"
+        case unavailable = "Unavailable"
+        case notPermitted = "Not Permitted"
+        case tooManyRequests = "Too Many Requests"
+    }
     
     override private init() {
         super.init()
@@ -411,21 +420,31 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
 
         do {
             try BGTaskScheduler.shared.submit(request)
+            DispatchQueue.main.async {
+                self.backgroundRefreshStatus = .scheduled
+            }
         } catch let error as BGTaskScheduler.Error {
-            switch error.code {
-            case .unavailable:
-                // Expected on Simulator or if user disabled Background App Refresh
-                break
-            case .notPermitted:
-                print("Background refresh not permitted - check Info.plist BGTaskSchedulerPermittedIdentifiers")
-            case .tooManyPendingTaskRequests:
-                // Already have a pending request, which is fine
-                break
-            @unknown default:
-                print("Could not schedule background refresh: \(error)")
+            DispatchQueue.main.async {
+                switch error.code {
+                case .unavailable:
+                    self.backgroundRefreshStatus = .unavailable
+                case .notPermitted:
+                    self.backgroundRefreshStatus = .notPermitted
+                case .tooManyPendingTaskRequests:
+                    // Already have a pending request, which is fine
+                    self.backgroundRefreshStatus = .scheduled
+                @unknown default:
+                    self.backgroundRefreshStatus = .unknown
+                }
             }
         } catch {
-            print("Could not schedule background refresh: \(error)")
+            DispatchQueue.main.async {
+                self.backgroundRefreshStatus = .unknown
+            }
+        }
+        #else
+        DispatchQueue.main.async {
+            self.backgroundRefreshStatus = .unavailable
         }
         #endif
     }
