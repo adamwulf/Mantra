@@ -6,10 +6,6 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-		C56CD2DA2EE670A700A1CBF3 /* Mantra-Moment-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = C56CD2D92EE670A700A1CBF3 /* Mantra-Moment-Info.plist */; };
-/* End PBXBuildFile section */
-
 /* Begin PBXFileReference section */
 		C52E27842ED587BD0089913C /* Mantra Moment.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Mantra Moment.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		C56CD2D92EE670A700A1CBF3 /* Mantra-Moment-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Mantra-Moment-Info.plist"; sourceTree = "<group>"; };
@@ -115,7 +111,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C56CD2DA2EE670A700A1CBF3 /* Mantra-Moment-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

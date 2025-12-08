@@ -433,6 +433,9 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
                 case .tooManyPendingTaskRequests:
                     // Already have a pending request, which is fine
                     self.backgroundRefreshStatus = .scheduled
+                case .immediateRunIneligible:
+                    // Only applies to BGContinuedProcessingTaskRequest, not BGAppRefreshTaskRequest
+                    self.backgroundRefreshStatus = .scheduled
                 @unknown default:
                     self.backgroundRefreshStatus = .unknown
                 }
