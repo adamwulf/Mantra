@@ -1,13 +1,17 @@
 import Foundation
 import UserNotifications
 import Combine
+import BackgroundTasks
 #if canImport(UIKit)
 import UIKit
 #endif
 
 class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     static let shared = NotificationManager()
-    
+
+    /// Background task identifier for rescheduling notifications
+    static let backgroundTaskIdentifier = "com.milestonemade.Mantra.refresh"
+
     @Published var authorizationStatus: UNAuthorizationStatus = .notDetermined
     @Published var nextNotificationDate: Date?
     
@@ -27,15 +31,16 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
     
     @objc private func appWillEnterForeground() {
         checkAuthorization()
+        verifyNotificationScheduled()
     }
     
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         completionHandler([.banner, .list, .sound])
     }
     
-    // Called when notification is delivered (even in background)
+    // Called when the user interacts with (taps) a notification
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        // Schedule the next notification to maintain continuous flow
+        // Schedule the next batch of notifications when user engages
         scheduleNextNotification()
         completionHandler()
     }
@@ -159,8 +164,11 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
                 self.nextNotificationDate = earliest
             }
         }
+
+        // Schedule background refresh to ensure notifications continue
+        scheduleBackgroundRefresh()
     }
-    
+
     /// Resolve the phrase text for a scheduled entry
     private func resolvePhrase(for entry: ScheduledEntry, phrases: [UUID: String]) -> String? {
         switch entry.phraseMode {
@@ -378,15 +386,43 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         getNextScheduledNotification { nextDate in
             let now = Date()
             let twentyFourHoursFromNow = now.addingTimeInterval(24 * 60 * 60)
-            
+
             // Check if we have a notification scheduled within the next 24 hours
             if let nextDate = nextDate, nextDate <= twentyFourHoursFromNow {
                 // We're good, notification is scheduled
                 return
             }
-            
+
             // No notification scheduled within 24 hours, reschedule
             self.scheduleNextNotification()
         }
+    }
+
+    // MARK: - Background App Refresh
+
+    /// Schedule a background app refresh task to reschedule notifications
+    /// This ensures notifications continue even if the user doesn't open the app
+    func scheduleBackgroundRefresh() {
+        #if os(iOS)
+        let request = BGAppRefreshTaskRequest(identifier: Self.backgroundTaskIdentifier)
+        // Request to run no earlier than 12 hours from now
+        // The system will decide the actual time based on user behavior and battery
+        request.earliestBeginDate = Date(timeIntervalSinceNow: 12 * 60 * 60)
+
+        do {
+            try BGTaskScheduler.shared.submit(request)
+        } catch {
+            print("Could not schedule background refresh: \(error)")
+        }
+        #endif
+    }
+
+    /// Handle the background refresh task
+    /// Called by the system when it grants background execution time
+    func handleBackgroundRefresh() {
+        // Verify and reschedule notifications if needed
+        verifyNotificationScheduled()
+        // Schedule the next background refresh
+        scheduleBackgroundRefresh()
     }
 }

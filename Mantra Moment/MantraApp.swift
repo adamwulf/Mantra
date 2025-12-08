@@ -12,6 +12,9 @@ struct MantraApp: App {
             
             // Verify notification is scheduled on startup
             NotificationManager.shared.verifyNotificationScheduled()
+
+            // Schedule background refresh for notification rescheduling
+            NotificationManager.shared.scheduleBackgroundRefresh()
         } catch {
             fatalError("Failed to create ModelContainer: \(error)")
         }
@@ -48,6 +51,11 @@ struct MantraApp: App {
             ContentView()
         }
         .modelContainer(container)
+        .backgroundTask(.appRefresh(NotificationManager.backgroundTaskIdentifier)) {
+            await MainActor.run {
+                NotificationManager.shared.handleBackgroundRefresh()
+            }
+        }
 #endif
     }
     
