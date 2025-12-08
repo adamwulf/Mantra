@@ -411,6 +411,19 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
 
         do {
             try BGTaskScheduler.shared.submit(request)
+        } catch let error as BGTaskScheduler.Error {
+            switch error.code {
+            case .unavailable:
+                // Expected on Simulator or if user disabled Background App Refresh
+                break
+            case .notPermitted:
+                print("Background refresh not permitted - check Info.plist BGTaskSchedulerPermittedIdentifiers")
+            case .tooManyPendingTaskRequests:
+                // Already have a pending request, which is fine
+                break
+            @unknown default:
+                print("Could not schedule background refresh: \(error)")
+            }
         } catch {
             print("Could not schedule background refresh: \(error)")
         }
