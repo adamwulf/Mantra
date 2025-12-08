@@ -137,40 +137,44 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         // Calculate times for all entries
         let times = calculateNotificationTimes(for: enabledEntries, schedule: schedule)
         
-        var earliestTime: Date?
-        
+        let now = Date()
+        var earliestFutureTime: Date?
+
         // Schedule each entry
         for (entry, time) in zip(enabledEntries, times) {
             guard let phraseText = resolvePhrase(for: entry, phrases: phrases) else {
                 continue
             }
-            
+
             let content = UNMutableNotificationContent()
             content.title = "Mantra"
             content.body = phraseText
             content.sound = .default
             content.interruptionLevel = .critical
-            
+
             let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: time)
             let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-            
+
             let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
-            
+
             UNUserNotificationCenter.current().add(request) { error in
                 if error == nil {
                     DispatchQueue.main.async {
-                        if earliestTime == nil || time < earliestTime! {
-                            earliestTime = time
+                        // Only consider future times for "next notification" display
+                        if time > now && (earliestFutureTime == nil || time < earliestFutureTime!) {
+                            earliestFutureTime = time
                             self.nextNotificationDate = time
                         }
                     }
                 }
             }
         }
-        
-        if let earliest = earliestTime {
-            DispatchQueue.main.async {
-                self.nextNotificationDate = earliest
+
+        // Update nextNotificationDate on main thread after all scheduling
+        DispatchQueue.main.async {
+            if earliestFutureTime == nil {
+                // All times were in the past, clear the display
+                self.nextNotificationDate = nil
             }
         }
 
