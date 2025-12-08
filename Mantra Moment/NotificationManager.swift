@@ -16,6 +16,11 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
     @Published var nextNotificationDate: Date?
     @Published var backgroundRefreshStatus: BackgroundRefreshStatus = .unknown
 
+    #if os(macOS)
+    /// Background activity scheduler for macOS
+    private var backgroundActivityScheduler: NSBackgroundActivityScheduler?
+    #endif
+
     enum BackgroundRefreshStatus: String {
         case unknown = "Unknown"
         case scheduled = "Scheduled"
@@ -36,6 +41,9 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
     
     deinit {
         NotificationCenter.default.removeObserver(self)
+        #if os(macOS)
+        backgroundActivityScheduler?.invalidate()
+        #endif
     }
     
     @objc private func appWillEnterForeground() {
@@ -449,9 +457,51 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
                 self.backgroundRefreshStatus = .unknown
             }
         }
-        #else
+        #elseif os(macOS)
+        // Use NSBackgroundActivityScheduler on macOS
+        // Invalidate any existing scheduler before creating a new one
+        backgroundActivityScheduler?.invalidate()
+
+        let scheduler = NSBackgroundActivityScheduler(identifier: Self.backgroundTaskIdentifier)
+        scheduler.repeats = true
+        // Run approximately every 12 hours
+        scheduler.interval = 12 * 60 * 60
+        // Allow flexibility of ±2 hours for optimal scheduling
+        scheduler.tolerance = 2 * 60 * 60
+        scheduler.qualityOfService = .background
+
+        scheduler.schedule { [weak self] completion in
+            guard let self = self else {
+                completion(.finished)
+                return
+            }
+
+            // Check if we should defer (system conditions changed)
+            if scheduler.shouldDefer {
+                completion(.deferred)
+                return
+            }
+
+            // Verify and reschedule notifications if needed
+            self.getNextScheduledNotification { nextDate in
+                let now = Date()
+                let twentyFourHoursFromNow = now.addingTimeInterval(24 * 60 * 60)
+
+                if let nextDate = nextDate, nextDate <= twentyFourHoursFromNow {
+                    // Notifications are already scheduled, we're done
+                    completion(.finished)
+                    return
+                }
+
+                // Need to reschedule notifications
+                self.scheduleNextNotification()
+                completion(.finished)
+            }
+        }
+
+        backgroundActivityScheduler = scheduler
         DispatchQueue.main.async {
-            self.backgroundRefreshStatus = .unavailable
+            self.backgroundRefreshStatus = .scheduled
         }
         #endif
     }
