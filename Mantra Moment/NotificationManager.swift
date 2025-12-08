@@ -419,10 +419,31 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
 
     /// Handle the background refresh task
     /// Called by the system when it grants background execution time
-    func handleBackgroundRefresh() {
-        // Verify and reschedule notifications if needed
-        verifyNotificationScheduled()
-        // Schedule the next background refresh
+    #if os(iOS)
+    func handleBackgroundRefresh(task: BGAppRefreshTask) {
+        // Schedule the next background refresh first
         scheduleBackgroundRefresh()
+
+        // Set up expiration handler
+        task.expirationHandler = {
+            task.setTaskCompleted(success: false)
+        }
+
+        // Verify and reschedule notifications if needed
+        getNextScheduledNotification { nextDate in
+            let now = Date()
+            let twentyFourHoursFromNow = now.addingTimeInterval(24 * 60 * 60)
+
+            if let nextDate = nextDate, nextDate <= twentyFourHoursFromNow {
+                // Notifications are already scheduled, we're done
+                task.setTaskCompleted(success: true)
+                return
+            }
+
+            // Need to reschedule notifications
+            self.scheduleNextNotification()
+            task.setTaskCompleted(success: true)
+        }
     }
+    #endif
 }

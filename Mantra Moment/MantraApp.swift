@@ -1,15 +1,26 @@
 import SwiftUI
 import SwiftData
+import BackgroundTasks
 
 @main
 struct MantraApp: App {
     let container: ModelContainer
-    
+
     init() {
         do {
             container = try ModelContainer(for: Phrase.self)
             seedDefaultPhrasesIfNeeded()
-            
+
+            // Register background task handler before scheduling
+            #if os(iOS)
+            BGTaskScheduler.shared.register(
+                forTaskWithIdentifier: NotificationManager.backgroundTaskIdentifier,
+                using: nil
+            ) { task in
+                NotificationManager.shared.handleBackgroundRefresh(task: task as! BGAppRefreshTask)
+            }
+            #endif
+
             // Verify notification is scheduled on startup
             NotificationManager.shared.verifyNotificationScheduled()
 
@@ -51,11 +62,6 @@ struct MantraApp: App {
             ContentView()
         }
         .modelContainer(container)
-        .backgroundTask(.appRefresh(NotificationManager.backgroundTaskIdentifier)) {
-            await MainActor.run {
-                NotificationManager.shared.handleBackgroundRefresh()
-            }
-        }
 #endif
     }
     
