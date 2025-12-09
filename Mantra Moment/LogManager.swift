@@ -10,6 +10,9 @@ import AppKit
 
 /// Manages logging configuration for the application
 enum LogManager {
+    
+    static let logger = Logger(label: "LogManager")
+    
     /// The directory where log files are stored
     static let logsDirectory: URL = {
         let fileManager = FileManager.default
@@ -24,6 +27,9 @@ enum LogManager {
     /// Maximum age for log files (7 days)
     private static let maxLogAge: TimeInterval = 7 * 24 * 60 * 60
 
+    /// Shared file handler - single instance for all loggers
+    private static let sharedFileHandler = FileLogHandler(label: "Mantra", logLevel: .debug)
+
     /// Configure the logging system to use our FileLogHandler
     static func configure() {
         // Create logs directory if needed
@@ -35,26 +41,19 @@ enum LogManager {
 
         // Bootstrap the logging system with our FileLogHandler
         LoggingSystem.bootstrap { label in
-            // Create a multiplexer to send logs to both console and file
-            var handlers: [LogHandler] = []
-
-            // Add console logger for development/debugging
             #if DEBUG
-            handlers.append(StreamLogHandler.standardOutput(label: label))
+            // In debug, multiplex to both console and the shared file handler
+            return MultiplexLogHandler([
+                StreamLogHandler.standardOutput(label: label),
+                sharedFileHandler
+            ])
+            #else
+            // In release, just use the shared file handler
+            return sharedFileHandler
             #endif
-
-            // Add file logger for all builds
-            handlers.append(FileLogHandler(label: label, logLevel: .debug))
-
-            // Return a multiplexer if we have multiple handlers, otherwise return the single handler
-            if handlers.count > 1 {
-                return MultiplexLogHandler(handlers)
-            } else if let handler = handlers.first {
-                return handler
-            } else {
-                return SwiftLogNoOpLogHandler()
-            }
         }
+        
+        logger.info("logging", metadata: ["status": "configured", "location": .string(logsDirectory.absoluteString)])
 
         // Clean up old log files
         cleanupOldLogs()
