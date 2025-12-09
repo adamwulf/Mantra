@@ -1,15 +1,21 @@
 import SwiftUI
 import SwiftData
 import BackgroundTasks
+import Logging
 
 @main
 struct MantraApp: App {
     let container: ModelContainer
+    static let logger = Logger(label: "MantraApp")
 
     init() {
+        // Configure logging first, before anything else
+        LogManager.configure()
+
         do {
             container = try ModelContainer(for: Phrase.self)
             seedDefaultPhrasesIfNeeded()
+            Self.logger.info("App initialized successfully")
 
             // Register background task handler before scheduling
             #if os(iOS)
@@ -27,6 +33,7 @@ struct MantraApp: App {
             // Schedule background refresh for notification rescheduling
             NotificationManager.shared.scheduleBackgroundRefresh()
         } catch {
+            Self.logger.critical("Failed to create ModelContainer", metadata: ["error": "\(error)"])
             fatalError("Failed to create ModelContainer: \(error)")
         }
     }

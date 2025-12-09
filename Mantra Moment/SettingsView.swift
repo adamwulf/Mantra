@@ -137,6 +137,17 @@ struct SettingsView: View {
                             }
                             .disabled(testNotificationCountdown > 0)
                         }
+
+#if os(macOS)
+                        Divider()
+                            .padding(.vertical, 8)
+#endif
+
+                        Section(header: Text("Debug").font(.headline)) {
+                            Button("Export Debug Logs") {
+                                exportDebugLogs()
+                            }
+                        }
                     }
                 }
             }
@@ -234,6 +245,14 @@ struct SettingsView: View {
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.notifications") {
             NSWorkspace.shared.open(url)
         }
+#endif
+    }
+
+    private func exportDebugLogs() {
+#if canImport(UIKit)
+        LogManager.shareLogArchive()
+#elseif os(macOS)
+        LogManager.saveLogArchive()
 #endif
     }
 }

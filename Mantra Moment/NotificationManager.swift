@@ -2,12 +2,14 @@ import Foundation
 import UserNotifications
 import Combine
 import BackgroundTasks
+import Logging
 #if canImport(UIKit)
 import UIKit
 #endif
 
 class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     static let shared = NotificationManager()
+    private let logger = Logger(label: "NotificationManager")
 
     /// Background task identifier for rescheduling notifications
     static let backgroundTaskIdentifier = "com.milestonemade.Mantra.refresh"
@@ -31,12 +33,14 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
     
     override private init() {
         super.init()
+        logger.info("NotificationManager initializing")
         UNUserNotificationCenter.current().delegate = self
         checkAuthorization()
-        
+
 #if canImport(UIKit)
         NotificationCenter.default.addObserver(self, selector: #selector(appWillEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
 #endif
+        logger.info("NotificationManager initialized")
     }
     
     deinit {
@@ -47,31 +51,37 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
     }
     
     @objc private func appWillEnterForeground() {
+        logger.info("App will enter foreground - checking authorization and verifying notifications")
         checkAuthorization()
         verifyNotificationScheduled()
     }
     
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        logger.info("Will present notification", metadata: ["identifier": "\(notification.request.identifier)", "body": "\(notification.request.content.body)"])
         completionHandler([.banner, .list, .sound])
     }
-    
+
     // Called when the user interacts with (taps) a notification
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        logger.info("User interacted with notification", metadata: ["identifier": "\(response.notification.request.identifier)", "action": "\(response.actionIdentifier)"])
         // Schedule the next batch of notifications when user engages
         scheduleNextNotification()
         completionHandler()
     }
     
     func requestAuthorization() {
+        logger.info("Requesting notification authorization")
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge, .criticalAlert]) { granted, error in
+            self.logger.info("Authorization response", metadata: ["granted": "\(granted)", "error": "\(error?.localizedDescription ?? "none")"])
             DispatchQueue.main.async {
                 self.checkAuthorization()
             }
         }
     }
-    
+
     func checkAuthorization() {
         UNUserNotificationCenter.current().getNotificationSettings { settings in
+            self.logger.debug("Authorization status checked", metadata: ["status": "\(settings.authorizationStatus.rawValue)"])
             DispatchQueue.main.async {
                 self.authorizationStatus = settings.authorizationStatus
             }
@@ -80,19 +90,27 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
     
 
     func scheduleTestNotification() {
+        logger.info("Scheduling test notification")
         let content = UNMutableNotificationContent()
         content.title = "Mantra Test"
         content.body = "This is a test notification. You got this!"
         content.sound = .default
         content.interruptionLevel = .critical
-        
+
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
-        
-        UNUserNotificationCenter.current().add(request)
+
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                self.logger.error("Failed to schedule test notification", metadata: ["error": "\(error.localizedDescription)"])
+            } else {
+                self.logger.info("Test notification scheduled successfully")
+            }
+        }
     }
-    
+
     func cancelAll() {
+        logger.info("Cancelling all pending notifications")
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
     }
     
@@ -103,54 +121,71 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         let phraseDict = Dictionary(uniqueKeysWithValues: phrases.filter { $0.isEnabled }.map { ($0.id, $0.text) })
         if let data = try? JSONEncoder().encode(phraseDict) {
             UserDefaults.standard.set(data, forKey: "CachedPhrases")
+            logger.debug("Cached phrases for background access", metadata: ["count": "\(phraseDict.count)"])
         }
     }
-    
+
     /// Load cached phrases from UserDefaults
     private func loadCachedPhrases() -> [UUID: String] {
         guard let data = UserDefaults.standard.data(forKey: "CachedPhrases"),
               let phrases = try? JSONDecoder().decode([UUID: String].self, from: data) else {
+            logger.warning("No cached phrases found")
             return [:]
         }
+        logger.debug("Loaded cached phrases", metadata: ["count": "\(phrases.count)"])
         return phrases
     }
     
     /// Schedule notifications for all enabled scheduled entries
     func scheduleNextNotification() {
+        logger.info("scheduleNextNotification called")
         cancelAll()
         let schedule = Schedule.load()
         guard schedule.isEnabled else {
+            logger.info("Schedule is disabled, not scheduling notifications")
             DispatchQueue.main.async {
                 self.nextNotificationDate = nil
             }
             return
         }
-        
+
         let phrases = loadCachedPhrases()
         guard !phrases.isEmpty else {
+            logger.warning("No phrases available, cannot schedule notifications")
             DispatchQueue.main.async {
                 self.nextNotificationDate = nil
             }
             return
         }
-        
+
         let enabledEntries = schedule.scheduledEntries.filter { $0.isEnabled }
         guard !enabledEntries.isEmpty else {
+            logger.info("No enabled schedule entries, not scheduling notifications")
             DispatchQueue.main.async {
                 self.nextNotificationDate = nil
             }
             return
         }
-        
+
+        logger.info("Scheduling notifications", metadata: [
+            "enabledEntries": "\(enabledEntries.count)",
+            "phrases": "\(phrases.count)",
+            "startTime": "\(schedule.startTime)",
+            "endTime": "\(schedule.endTime)"
+        ])
+
         // Calculate times for all entries
         let times = calculateNotificationTimes(for: enabledEntries, schedule: schedule)
-        
+
         let now = Date()
         var earliestFutureTime: Date?
+        var scheduledCount = 0
+        var errorCount = 0
 
         // Schedule each entry
         for (entry, time) in zip(enabledEntries, times) {
             guard let phraseText = resolvePhrase(for: entry, phrases: phrases) else {
+                logger.warning("Could not resolve phrase for entry", metadata: ["entryId": "\(entry.id)"])
                 continue
             }
 
@@ -163,10 +198,24 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
             let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: time)
             let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
 
-            let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
+            let requestId = UUID().uuidString
+            let request = UNNotificationRequest(identifier: requestId, content: content, trigger: trigger)
+
+            logger.debug("Scheduling notification", metadata: [
+                "id": "\(requestId)",
+                "time": "\(time)",
+                "phrase": "\(phraseText.prefix(30))"
+            ])
 
             UNUserNotificationCenter.current().add(request) { error in
-                if error == nil {
+                if let error = error {
+                    errorCount += 1
+                    self.logger.error("Failed to schedule notification", metadata: [
+                        "id": "\(requestId)",
+                        "error": "\(error.localizedDescription)"
+                    ])
+                } else {
+                    scheduledCount += 1
                     DispatchQueue.main.async {
                         // Only consider future times for "next notification" display
                         if time > now && (earliestFutureTime == nil || time < earliestFutureTime!) {
@@ -178,9 +227,16 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
             }
         }
 
+        logger.info("Notification scheduling complete", metadata: [
+            "scheduled": "\(scheduledCount)",
+            "errors": "\(errorCount)",
+            "nextTime": "\(earliestFutureTime?.description ?? "none")"
+        ])
+
         // Update nextNotificationDate on main thread after all scheduling
         DispatchQueue.main.async {
             if earliestFutureTime == nil {
+                self.logger.info("All scheduled times are in the past, clearing nextNotificationDate")
                 // All times were in the past, clear the display
                 self.nextNotificationDate = nil
             }
@@ -384,7 +440,10 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
     
     /// Get the next scheduled notification date
     func getNextScheduledNotification(completion: @escaping (Date?) -> Void) {
+        logger.debug("Getting next scheduled notification")
         UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
+            self.logger.debug("Pending notification requests", metadata: ["count": "\(requests.count)"])
+
             // Find the earliest notification
             let nextDate = requests.compactMap { request -> Date? in
                 if let trigger = request.trigger as? UNCalendarNotificationTrigger,
@@ -393,25 +452,43 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
                 }
                 return nil
             }.min()
-            
+
+            self.logger.info("Next scheduled notification", metadata: [
+                "date": "\(nextDate?.description ?? "none")",
+                "pendingCount": "\(requests.count)"
+            ])
+
             DispatchQueue.main.async {
                 self.nextNotificationDate = nextDate
                 completion(nextDate)
             }
         }
     }
-    
+
     /// Verify that a notification is scheduled within the next 24 hours
     /// If not, clear all notifications and reschedule
     func verifyNotificationScheduled() {
+        logger.info("Verifying notifications are scheduled")
         getNextScheduledNotification { nextDate in
             let now = Date()
             let twentyFourHoursFromNow = now.addingTimeInterval(24 * 60 * 60)
 
             // Check if we have a notification scheduled within the next 24 hours
             if let nextDate = nextDate, nextDate <= twentyFourHoursFromNow {
-                // We're good, notification is scheduled
+                self.logger.info("Notifications verified - next notification is within 24 hours", metadata: [
+                    "nextDate": "\(nextDate)",
+                    "hoursFromNow": "\(nextDate.timeIntervalSince(now) / 3600)"
+                ])
                 return
+            }
+
+            if let nextDate = nextDate {
+                self.logger.warning("Next notification is more than 24 hours away, rescheduling", metadata: [
+                    "nextDate": "\(nextDate)",
+                    "hoursFromNow": "\(nextDate.timeIntervalSince(now) / 3600)"
+                ])
+            } else {
+                self.logger.warning("No notifications scheduled, rescheduling")
             }
 
             // No notification scheduled within 24 hours, reschedule
@@ -424,6 +501,7 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
     /// Schedule a background app refresh task to reschedule notifications
     /// This ensures notifications continue even if the user doesn't open the app
     func scheduleBackgroundRefresh() {
+        logger.info("Scheduling background refresh")
         #if os(iOS)
         let request = BGAppRefreshTaskRequest(identifier: Self.backgroundTaskIdentifier)
         // Request to run no earlier than 12 hours from now
@@ -432,10 +510,17 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
 
         do {
             try BGTaskScheduler.shared.submit(request)
+            logger.info("Background refresh task submitted successfully", metadata: [
+                "earliestBeginDate": "\(request.earliestBeginDate?.description ?? "none")"
+            ])
             DispatchQueue.main.async {
                 self.backgroundRefreshStatus = .scheduled
             }
         } catch let error as BGTaskScheduler.Error {
+            logger.warning("Background task scheduler error", metadata: [
+                "code": "\(error.code.rawValue)",
+                "description": "\(error.localizedDescription)"
+            ])
             DispatchQueue.main.async {
                 switch error.code {
                 case .unavailable:
@@ -453,6 +538,7 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
                 }
             }
         } catch {
+            logger.error("Unknown error scheduling background refresh", metadata: ["error": "\(error.localizedDescription)"])
             DispatchQueue.main.async {
                 self.backgroundRefreshStatus = .unknown
             }
@@ -476,8 +562,11 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
                 return
             }
 
+            self.logger.info("macOS background activity triggered")
+
             // Check if we should defer (system conditions changed)
             if scheduler.shouldDefer {
+                self.logger.info("macOS background activity deferred by system")
                 completion(.deferred)
                 return
             }
@@ -488,11 +577,14 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
                 let twentyFourHoursFromNow = now.addingTimeInterval(24 * 60 * 60)
 
                 if let nextDate = nextDate, nextDate <= twentyFourHoursFromNow {
-                    // Notifications are already scheduled, we're done
+                    self.logger.info("macOS background: notifications already scheduled", metadata: [
+                        "nextDate": "\(nextDate)"
+                    ])
                     completion(.finished)
                     return
                 }
 
+                self.logger.info("macOS background: rescheduling notifications")
                 // Need to reschedule notifications
                 self.scheduleNextNotification()
                 completion(.finished)
@@ -500,6 +592,10 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         }
 
         backgroundActivityScheduler = scheduler
+        logger.info("macOS background activity scheduler configured", metadata: [
+            "interval": "\(scheduler.interval)",
+            "tolerance": "\(scheduler.tolerance)"
+        ])
         DispatchQueue.main.async {
             self.backgroundRefreshStatus = .scheduled
         }
@@ -510,11 +606,14 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
     /// Called by the system when it grants background execution time
     #if os(iOS)
     func handleBackgroundRefresh(task: BGAppRefreshTask) {
+        logger.info("iOS background refresh task started", metadata: ["taskIdentifier": "\(task.identifier)"])
+
         // Schedule the next background refresh first
         scheduleBackgroundRefresh()
 
         // Set up expiration handler
         task.expirationHandler = {
+            self.logger.warning("iOS background refresh task expired")
             task.setTaskCompleted(success: false)
         }
 
@@ -524,13 +623,26 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
             let twentyFourHoursFromNow = now.addingTimeInterval(24 * 60 * 60)
 
             if let nextDate = nextDate, nextDate <= twentyFourHoursFromNow {
-                // Notifications are already scheduled, we're done
+                self.logger.info("iOS background: notifications already scheduled", metadata: [
+                    "nextDate": "\(nextDate)",
+                    "hoursFromNow": "\(nextDate.timeIntervalSince(now) / 3600)"
+                ])
                 task.setTaskCompleted(success: true)
                 return
             }
 
+            if let nextDate = nextDate {
+                self.logger.info("iOS background: next notification > 24h away, rescheduling", metadata: [
+                    "nextDate": "\(nextDate)",
+                    "hoursFromNow": "\(nextDate.timeIntervalSince(now) / 3600)"
+                ])
+            } else {
+                self.logger.info("iOS background: no notifications scheduled, scheduling now")
+            }
+
             // Need to reschedule notifications
             self.scheduleNextNotification()
+            self.logger.info("iOS background refresh task completed successfully")
             task.setTaskCompleted(success: true)
         }
     }
