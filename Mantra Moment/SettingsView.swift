@@ -14,7 +14,7 @@ struct SettingsView: View {
     @State private var editingEntry: ScheduledEntry?
     
     @ObservedObject var notificationManager = NotificationManager.shared
-    
+
     var body: some View {
         NavigationStack {
             Form {
@@ -41,7 +41,11 @@ struct SettingsView: View {
                                 }
                                 saveAndSchedule()
                             }
-                        
+
+                        #if os(macOS)
+                        LaunchAtLoginView()
+                        #endif
+
                         if schedule.isEnabled {
                             HStack {
                                 DatePicker("Start", selection: $schedule.startTime, displayedComponents: .hourAndMinute)
