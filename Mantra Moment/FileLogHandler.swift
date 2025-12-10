@@ -5,8 +5,8 @@ import Logfmt
 /// A log handler that writes log messages to a file with daily rotation
 struct FileLogHandler: LogHandler {
     // Static dispatch queue for thread-safe file writing across all instances
-    private static let fileWriteQueue = DispatchQueue(label: "com.milestonemade.Mantra.FileLogHandler")
-
+    private static let fileWriteQueue = DispatchQueue(label: "com.milestonemade.Mantra.FileLogHandler", autoreleaseFrequency: .workItem)
+ 
     // Thread-safe global log level override
     private static let overrideLock = NSLock()
     private static var overrideLogLevel: Logger.Level?
@@ -75,7 +75,7 @@ struct FileLogHandler: LogHandler {
     private static func appendToFile(message: String, to fileURL: URL) {
         let logMessage = message + "\n"
 
-        fileWriteQueue.sync {
+        fileWriteQueue.async {
             if let data = logMessage.data(using: .utf8) {
                 let fileManager = FileManager.default
                 if fileManager.fileExists(atPath: fileURL.path) {
