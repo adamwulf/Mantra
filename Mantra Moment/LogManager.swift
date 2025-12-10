@@ -53,13 +53,7 @@ enum LogManager {
             #endif
         }
         
-        logger.trace("example", metadata: ["status": "oops"])
-        logger.debug("example", metadata: ["status": "oops"])
-        logger.info("logging", metadata: ["status": "configured", "location": .string(logsDirectory.absoluteString)])
-        logger.notice("example", metadata: ["status": "oops"])
-        logger.warning("example", metadata: ["status": "oops"])
-        logger.error("example", metadata: ["status": "oops"])
-        logger.critical("example", metadata: ["status": "oops"])
+        logger.info("logging_configured", metadata: ["location": .string(logsDirectory.absoluteString)])
 
         // Clean up old log files
         cleanupOldLogs()

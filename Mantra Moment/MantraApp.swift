@@ -15,7 +15,7 @@ struct MantraApp: App {
         do {
             container = try ModelContainer(for: Phrase.self)
             seedDefaultPhrasesIfNeeded()
-            Self.logger.info("App initialized successfully")
+            Self.logger.info("app_initialized")
 
             // Register background task handler before scheduling
             #if os(iOS)
@@ -33,7 +33,7 @@ struct MantraApp: App {
             // Schedule background refresh for notification rescheduling
             NotificationManager.shared.scheduleBackgroundRefresh()
         } catch {
-            Self.logger.critical("Failed to create ModelContainer", metadata: ["error": "\(error)"])
+            Self.logger.critical("model_container_failed", metadata: ["error": "\(error)"])
             fatalError("Failed to create ModelContainer: \(error)")
         }
     }
