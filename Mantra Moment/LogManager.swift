@@ -27,9 +27,6 @@ enum LogManager {
     /// Maximum age for log files (7 days)
     private static let maxLogAge: TimeInterval = 7 * 24 * 60 * 60
 
-    /// Shared file handler - single instance for all loggers
-    private static let sharedFileHandler = FileLogHandler(label: "Mantra", logLevel: .debug)
-
     /// Configure the logging system to use our FileLogHandler
     static func configure() {
         // Create logs directory if needed
@@ -40,20 +37,29 @@ enum LogManager {
         }
 
         // Bootstrap the logging system with our FileLogHandler
+        // Each logger gets its own FileLogHandler with its label, but they all write
+        // to the same file safely via the static dispatch queue in FileLogHandler
         LoggingSystem.bootstrap { label in
+            let fileHandler = FileLogHandler(label: label, logLevel: .debug)
             #if DEBUG
-            // In debug, multiplex to both console and the shared file handler
+            // In debug, multiplex to both console and file
             return MultiplexLogHandler([
                 StreamLogHandler.standardOutput(label: label),
-                sharedFileHandler
+                fileHandler
             ])
             #else
-            // In release, just use the shared file handler
-            return sharedFileHandler
+            // In release, just use the file handler
+            return fileHandler
             #endif
         }
         
+        logger.trace("example", metadata: ["status": "oops"])
+        logger.debug("example", metadata: ["status": "oops"])
         logger.info("logging", metadata: ["status": "configured", "location": .string(logsDirectory.absoluteString)])
+        logger.notice("example", metadata: ["status": "oops"])
+        logger.warning("example", metadata: ["status": "oops"])
+        logger.error("example", metadata: ["status": "oops"])
+        logger.critical("example", metadata: ["status": "oops"])
 
         // Clean up old log files
         cleanupOldLogs()

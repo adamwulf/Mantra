@@ -4,18 +4,15 @@ import Logfmt
 
 /// A log handler that writes log messages to a file with daily rotation
 struct FileLogHandler: LogHandler {
+    // Static dispatch queue for thread-safe file writing across all instances
+    private static let fileWriteQueue = DispatchQueue(label: "com.milestonemade.Mantra.FileLogHandler")
+
     // Thread-safe global log level override
     private static let overrideLock = NSLock()
     private static var overrideLogLevel: Logger.Level?
 
     private let label: String
-    private let logsDirectory: URL
     private let dateFormatter: DateFormatter
-
-    // Current file URL is computed based on rotation strategy
-    private var currentFileURL: URL {
-        getLogFileURL()
-    }
 
     private var _logLevel: Logger.Level
     var logLevel: Logger.Level {
@@ -42,25 +39,11 @@ struct FileLogHandler: LogHandler {
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
         dateFormatter.timeZone = .gmt
 
-        // Get the logs directory from LogManager's static property
-        self.logsDirectory = LogManager.logsDirectory
-
         do {
-            try FileManager.default.createDirectory(at: logsDirectory, withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(at: LogManager.logsDirectory, withIntermediateDirectories: true)
         } catch {
             print("Error creating logs directory: \(error.localizedDescription)")
         }
-    }
-
-    /// Returns the appropriate log file URL based on daily rotation
-    private func getLogFileURL() -> URL {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-
-        let dateString = formatter.string(from: Date())
-        let filename = "\(label)-\(dateString).log"
-
-        return logsDirectory.appendingPathComponent(filename)
     }
 
     func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, source: String, file: String, function: String, line: UInt) {
@@ -70,29 +53,42 @@ struct FileLogHandler: LogHandler {
         // Format the log message with timestamp, level, source, and message
         let timestamp = dateFormatter.string(from: Date())
         let metadataString = String.logfmt(self.metadata.merging(metadata ?? [:]) { _, new in new })
-        let filename = (file as NSString).lastPathComponent
-        let logMessage = "\(timestamp) \(level.rawValue.uppercased()) [\(source)] \(filename):\(line) \(function) \(message)\(metadataString.isEmpty ? "" : " \(metadataString)")"
+        let filename = ((file as NSString).lastPathComponent as NSString).deletingPathExtension
+        let levelStr = level.rawValue.uppercased().padding(toLength: 8, withPad: " ", startingAt: 0)
+        let logMessage = "\(timestamp) \(levelStr) [\(label)] \(filename).\(function):\(line) \(message)\(metadataString.isEmpty ? "" : " \(metadataString)")"
 
         // Write to file
-        appendToFile(message: logMessage)
+        FileLogHandler.appendToFile(message: logMessage, to: Self.getLogFileURL(for: source))
     }
 
-    private func appendToFile(message: String) {
-        let logMessage = message + "\n"
-        let fileURL = currentFileURL // This will compute the current log file based on rotation strategy
+    /// Returns the appropriate log file URL based on daily rotation
+    private static func getLogFileURL(for source: String) -> URL {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
 
-        if let data = logMessage.data(using: .utf8) {
-            let fileManager = FileManager.default
-            if fileManager.fileExists(atPath: fileURL.path) {
-                // Append to existing file
-                if let fileHandle = try? FileHandle(forWritingTo: fileURL) {
-                    fileHandle.seekToEndOfFile()
-                    fileHandle.write(data)
-                    fileHandle.closeFile()
+        let dateString = formatter.string(from: Date())
+        let filename = "\(source)-\(dateString).log"
+
+        return LogManager.logsDirectory.appendingPathComponent(filename)
+    }
+
+    private static func appendToFile(message: String, to fileURL: URL) {
+        let logMessage = message + "\n"
+
+        fileWriteQueue.sync {
+            if let data = logMessage.data(using: .utf8) {
+                let fileManager = FileManager.default
+                if fileManager.fileExists(atPath: fileURL.path) {
+                    // Append to existing file
+                    if let fileHandle = try? FileHandle(forWritingTo: fileURL) {
+                        fileHandle.seekToEndOfFile()
+                        fileHandle.write(data)
+                        fileHandle.closeFile()
+                    }
+                } else {
+                    // Create new file
+                    try? data.write(to: fileURL, options: .atomic)
                 }
-            } else {
-                // Create new file
-                try? data.write(to: fileURL, options: .atomic)
             }
         }
     }
