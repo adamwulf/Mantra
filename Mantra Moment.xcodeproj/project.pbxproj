@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		C5LOG00052EE8A0000089913C /* Logging in Frameworks */ = {isa = PBXBuildFile; productRef = C5LOG00012ED58ABC0089913C /* Logging */; };
+		C5LOG00062EE8A0000089913C /* Logfmt in Frameworks */ = {isa = PBXBuildFile; productRef = C5LOG00022ED58ABC0089913C /* Logfmt */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		C52E27842ED587BD0089913C /* Mantra Moment.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Mantra Moment.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		C56CD2D92EE670A700A1CBF3 /* Mantra-Moment-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Mantra-Moment-Info.plist"; sourceTree = "<group>"; };
@@ -24,6 +29,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C5LOG00052EE8A0000089913C /* Logging in Frameworks */,
+				C5LOG00062EE8A0000089913C /* Logfmt in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -67,6 +74,8 @@
 			);
 			name = "Mantra Moment";
 			packageProductDependencies = (
+				C5LOG00012ED58ABC0089913C /* Logging */,
+				C5LOG00022ED58ABC0089913C /* Logfmt */,
 			);
 			productName = Mantra;
 			productReference = C52E27842ED587BD0089913C /* Mantra Moment.app */;
@@ -96,6 +105,10 @@
 			);
 			mainGroup = C52E277B2ED587BD0089913C;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				C5LOG00032ED58ABC0089913C /* XCRemoteSwiftPackageReference "swift-log" */,
+				C5LOG00042ED58ABC0089913C /* XCRemoteSwiftPackageReference "Logfmt" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = C52E27852ED587BD0089913C /* Products */;
 			projectDirPath = "";
@@ -254,8 +267,18 @@
 				DEVELOPMENT_TEAM = T68Z94627S;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Mantra-Moment-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Mantra;
@@ -305,8 +328,18 @@
 				DEVELOPMENT_TEAM = T68Z94627S;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Mantra-Moment-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Mantra;
@@ -367,6 +400,38 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		C5LOG00032ED58ABC0089913C /* XCRemoteSwiftPackageReference "swift-log" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-log.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.5.0;
+			};
+		};
+		C5LOG00042ED58ABC0089913C /* XCRemoteSwiftPackageReference "Logfmt" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/adamwulf/Logfmt.git";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		C5LOG00012ED58ABC0089913C /* Logging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C5LOG00032ED58ABC0089913C /* XCRemoteSwiftPackageReference "swift-log" */;
+			productName = Logging;
+		};
+		C5LOG00022ED58ABC0089913C /* Logfmt */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C5LOG00042ED58ABC0089913C /* XCRemoteSwiftPackageReference "Logfmt" */;
+			productName = Logfmt;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = C52E277C2ED587BD0089913C /* Project object */;
 }
