@@ -99,6 +99,9 @@ struct PhraseListView: View {
     
     private func cachePhrases() {
         NotificationManager.shared.cachePhrasesForBackground(phrases)
+        // Pending notifications carry frozen phrase text, so reschedule to
+        // pick up edits and drop deleted phrases
+        NotificationManager.shared.scheduleNextNotification()
     }
 }
 

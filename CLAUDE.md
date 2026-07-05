@@ -26,12 +26,12 @@ Mantra is a cross-platform (iOS/macOS) SwiftUI app that delivers scheduled motiv
 
 ### Key Implementation Details
 
-**Notification Scheduling**: Notifications are scheduled as `UNCalendarNotificationTrigger` with exact date components. Random-time entries use intelligent spacing within the schedule window with 30-minute minimum gaps from specific times.
+**Notification Scheduling**: All notifications use repeating `UNCalendarNotificationTrigger`s, so delivery continues indefinitely without app launches or background execution. Entries with a specific phrase and specific time use one daily trigger (hour+minute). Entries with a random phrase and/or random time use one weekly trigger per weekday (weekday+hour+minute) so content varies day to day while the app stays closed. Random-time entries use intelligent spacing within the schedule window with 30-minute minimum gaps from specific times. If the weekday fan-out would exceed the 64 pending-request budget, entries degrade to a single daily trigger with a frozen phrase/time.
 
-**Background Refresh**:
+**Background Refresh** (variety refresh only — delivery does not depend on it):
 - iOS uses `BGTaskScheduler` with `BGAppRefreshTask`
 - macOS uses `NSBackgroundActivityScheduler`
-- Both reschedule notifications every ~12 hours to ensure continuity
+- Both re-resolve random phrases/times every ~12 hours when the system allows
 - Background task identifier: `com.milestonemade.Mantra.refresh`
 
 **Phrase Caching**: Phrases are cached to UserDefaults (as `[UUID: String]`) for background task access since SwiftData context isn't available in background execution.
