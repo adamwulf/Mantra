@@ -64,7 +64,7 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
     // Called when the user interacts with (taps) a notification
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         logger.info("notification_interaction", metadata: ["identifier": "\(response.notification.request.identifier)", "action": "\(response.actionIdentifier)"])
-        // Schedule the next batch of notifications when user engages
+        // Re-resolve random phrases and times when the user engages
         scheduleNextNotification()
         completionHandler()
     }
@@ -136,8 +136,19 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         return phrases
     }
     
-    /// Schedule notifications for all enabled scheduled entries
-    func scheduleNextNotification() {
+    /// Schedule repeating notifications for all enabled scheduled entries.
+    ///
+    /// Every request uses a repeating `UNCalendarNotificationTrigger`, so once
+    /// scheduled, notifications keep firing indefinitely without the app ever
+    /// being launched again — delivery does not depend on background refresh.
+    ///
+    /// Entries with a specific phrase and specific time use one daily repeating
+    /// trigger. Entries with a random phrase and/or random time use one weekly
+    /// repeating trigger per weekday, each with an independently resolved phrase
+    /// and time, so content still varies day to day while the app stays closed.
+    /// Whenever the app does run (foreground, notification tap, or background
+    /// refresh), everything is re-resolved so the randomness stays fresh.
+    func scheduleNextNotification(completion: (() -> Void)? = nil) {
         logger.info("schedule_notifications", metadata: ["status": "starting"])
         cancelAll()
         let schedule = Schedule.load()
@@ -146,6 +157,7 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
             DispatchQueue.main.async {
                 self.nextNotificationDate = nil
             }
+            completion?()
             return
         }
 
@@ -155,6 +167,7 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
             DispatchQueue.main.async {
                 self.nextNotificationDate = nil
             }
+            completion?()
             return
         }
 
@@ -164,6 +177,7 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
             DispatchQueue.main.async {
                 self.nextNotificationDate = nil
             }
+            completion?()
             return
         }
 
@@ -175,79 +189,168 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
             "end_time": "\(schedule.endTime)"
         ])
 
-        // Calculate times for all entries
-        let times = calculateNotificationTimes(for: enabledEntries, schedule: schedule)
+        let requests = buildNotificationRequests(for: enabledEntries, schedule: schedule, phrases: phrases)
 
-        let now = Date()
-        var earliestFutureTime: Date?
-        var scheduledCount = 0
-        var errorCount = 0
-
-        // Schedule each entry
-        for (entry, time) in zip(enabledEntries, times) {
-            guard let phraseText = resolvePhrase(for: entry, phrases: phrases) else {
-                logger.warning("schedule_notification", metadata: ["status": "skipped", "reason": "phrase_not_found", "entry_id": "\(entry.id)"])
-                continue
-            }
-
-            let content = UNMutableNotificationContent()
-            content.title = "Mantra"
-            content.body = phraseText
-            content.sound = .default
-            content.interruptionLevel = .critical
-
-            let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: time)
-            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-
-            let requestId = UUID().uuidString
-            let request = UNNotificationRequest(identifier: requestId, content: content, trigger: trigger)
-
-            logger.debug("schedule_notification", metadata: [
-                "status": "adding",
-                "id": "\(requestId)",
-                "time": "\(time)",
-                "phrase": "\(phraseText.prefix(30))"
-            ])
-
+        let group = DispatchGroup()
+        for request in requests {
+            group.enter()
             UNUserNotificationCenter.current().add(request) { error in
                 if let error = error {
-                    errorCount += 1
                     self.logger.error("schedule_notification", metadata: [
                         "status": "failed",
-                        "id": "\(requestId)",
+                        "id": "\(request.identifier)",
                         "error": "\(error.localizedDescription)"
                     ])
-                } else {
-                    scheduledCount += 1
-                    DispatchQueue.main.async {
-                        // Only consider future times for "next notification" display
-                        if time > now && (earliestFutureTime == nil || time < earliestFutureTime!) {
-                            earliestFutureTime = time
-                            self.nextNotificationDate = time
-                        }
-                    }
                 }
+                group.leave()
             }
         }
 
-        logger.info("schedule_notifications", metadata: [
+        group.notify(queue: .main) {
+            self.logger.info("schedule_notifications", metadata: [
+                "status": "complete",
+                "requests": "\(requests.count)"
+            ])
+            // Update the next-notification display from the actual pending requests
+            self.getNextScheduledNotification { _ in }
+            completion?()
+        }
+
+        // Background refresh only re-resolves random phrases/times when the
+        // system allows, and delivery does not depend on it
+        scheduleBackgroundRefresh()
+    }
+
+    /// Maximum pending local notification requests the system keeps per app
+    private static let maxPendingNotifications = 64
+
+    /// Build repeating notification requests for the enabled entries.
+    ///
+    /// Fully-specific entries cost one request. Entries with randomness cost
+    /// seven (one per weekday). If the weekday fan-out would exceed the system's
+    /// pending request budget, entries are degraded to a single daily repeating
+    /// request with a frozen phrase and time until everything fits.
+    private func buildNotificationRequests(for entries: [ScheduledEntry], schedule: Schedule, phrases: [UUID: String]) -> [UNNotificationRequest] {
+        let calendar = Calendar.current
+        let now = Date()
+
+        let startComponents = calendar.dateComponents([.hour, .minute], from: schedule.startTime)
+        let endComponents = calendar.dateComponents([.hour, .minute], from: schedule.endTime)
+
+        guard let startHour = startComponents.hour, let startMinute = startComponents.minute,
+              let endHour = endComponents.hour, let endMinute = endComponents.minute,
+              let windowStart = calendar.date(bySettingHour: startHour, minute: startMinute, second: 0, of: now),
+              let windowEnd = calendar.date(bySettingHour: endHour, minute: endMinute, second: 0, of: now) else {
+            logger.error("build_requests", metadata: ["status": "failed", "reason": "invalid_window"])
+            return []
+        }
+
+        // Specific-time entries anchor the spacing for random times
+        let specificDates: [Date] = entries.compactMap { entry in
+            if case .specific(let hour, let minute) = entry.timeMode {
+                return calendar.date(bySettingHour: hour, minute: minute, second: 0, of: now)
+            }
+            return nil
+        }
+
+        // An entry with any randomness gets one weekly trigger per weekday so
+        // its phrase/time still vary day to day, while fully-specific entries repeat daily
+        func hasVariety(_ entry: ScheduledEntry) -> Bool {
+            if case .specific = entry.phraseMode, case .specific = entry.timeMode {
+                return false
+            }
+            return true
+        }
+
+        var varietyIds = Set(entries.filter(hasVariety).map(\.id))
+        func slotCost() -> Int {
+            (entries.count - varietyIds.count) + varietyIds.count * 7
+        }
+        while slotCost() > Self.maxPendingNotifications, let degraded = varietyIds.first {
+            varietyIds.remove(degraded)
+            logger.warning("build_requests", metadata: [
+                "status": "degraded",
+                "reason": "pending_budget",
+                "entry_id": "\(degraded)"
+            ])
+        }
+
+        func makeRequest(identifier: String, phrase: String, dateMatching components: DateComponents) -> UNNotificationRequest {
+            let content = UNMutableNotificationContent()
+            content.title = "Mantra"
+            content.body = phrase
+            content.sound = .default
+            content.interruptionLevel = .critical
+            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+            return UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+        }
+
+        // Resolve hour/minute for an entry, consuming from randomTimes for random entries
+        func resolveTime(for entry: ScheduledEntry, randomTimes: [Date], randomIndex: inout Int) -> (hour: Int, minute: Int)? {
+            switch entry.timeMode {
+            case .specific(let hour, let minute):
+                return (hour, minute)
+            case .random:
+                guard randomIndex < randomTimes.count else { return nil }
+                let components = calendar.dateComponents([.hour, .minute], from: randomTimes[randomIndex])
+                randomIndex += 1
+                guard let hour = components.hour, let minute = components.minute else { return nil }
+                return (hour, minute)
+            }
+        }
+
+        var requests: [UNNotificationRequest] = []
+
+        // Daily repeating requests: fully-specific entries plus any degraded ones
+        let dailyEntries = entries.filter { !varietyIds.contains($0.id) }
+        let dailyRandomCount = dailyEntries.filter { $0.timeMode == .random }.count
+        let dailyRandomTimes = calculateRandomTimes(count: dailyRandomCount, start: windowStart, end: windowEnd, avoid: specificDates)
+        var dailyRandomIndex = 0
+        for entry in dailyEntries {
+            guard let phrase = resolvePhrase(for: entry, phrases: phrases) else {
+                logger.warning("build_requests", metadata: ["status": "skipped", "reason": "phrase_not_found", "entry_id": "\(entry.id)"])
+                continue
+            }
+            guard let time = resolveTime(for: entry, randomTimes: dailyRandomTimes, randomIndex: &dailyRandomIndex) else {
+                continue
+            }
+            var components = DateComponents()
+            components.hour = time.hour
+            components.minute = time.minute
+            requests.append(makeRequest(identifier: "mantra-\(entry.id.uuidString)-daily", phrase: phrase, dateMatching: components))
+        }
+
+        // Weekly repeating requests: one per weekday per variety entry, with
+        // phrase and time resolved independently for each weekday
+        let weeklyEntries = entries.filter { varietyIds.contains($0.id) }
+        let weeklyRandomCount = weeklyEntries.filter { $0.timeMode == .random }.count
+        for weekday in 1...7 {
+            let randomTimes = calculateRandomTimes(count: weeklyRandomCount, start: windowStart, end: windowEnd, avoid: specificDates)
+            var randomIndex = 0
+            for entry in weeklyEntries {
+                guard let phrase = resolvePhrase(for: entry, phrases: phrases) else {
+                    logger.warning("build_requests", metadata: ["status": "skipped", "reason": "phrase_not_found", "entry_id": "\(entry.id)"])
+                    continue
+                }
+                guard let time = resolveTime(for: entry, randomTimes: randomTimes, randomIndex: &randomIndex) else {
+                    continue
+                }
+                var components = DateComponents()
+                components.weekday = weekday
+                components.hour = time.hour
+                components.minute = time.minute
+                requests.append(makeRequest(identifier: "mantra-\(entry.id.uuidString)-weekday\(weekday)", phrase: phrase, dateMatching: components))
+            }
+        }
+
+        logger.info("build_requests", metadata: [
             "status": "complete",
-            "scheduled": "\(scheduledCount)",
-            "errors": "\(errorCount)",
-            "next_time": "\(earliestFutureTime?.description ?? "none")"
+            "daily_entries": "\(dailyEntries.count)",
+            "weekly_entries": "\(weeklyEntries.count)",
+            "requests": "\(requests.count)"
         ])
 
-        // Update nextNotificationDate on main thread after all scheduling
-        DispatchQueue.main.async {
-            if earliestFutureTime == nil {
-                self.logger.info("schedule_notifications", metadata: ["status": "no_future_times"])
-                // All times were in the past, clear the display
-                self.nextNotificationDate = nil
-            }
-        }
-
-        // Schedule background refresh to ensure notifications continue
-        scheduleBackgroundRefresh()
+        return requests
     }
 
     /// Resolve the phrase text for a scheduled entry
@@ -258,131 +361,6 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         case .random:
             return phrases.values.randomElement()
         }
-    }
-    
-    // MARK: - Caching
-    
-    struct CachedSchedule: Codable {
-        let date: Date
-        let scheduleData: Data
-        let times: [Date]
-    }
-    
-    private func getCachedSchedule(for date: Date, schedule: Schedule) -> [Date]? {
-        guard let data = UserDefaults.standard.data(forKey: "CachedSchedule"),
-              let cache = try? JSONDecoder().decode(CachedSchedule.self, from: data) else {
-            return nil
-        }
-        
-        // Check if cache is for the same date
-        if !Calendar.current.isDate(cache.date, inSameDayAs: date) {
-            return nil
-        }
-        
-        // Check if schedule settings match
-        let encoder = JSONEncoder()
-        if #available(iOS 11.0, macOS 10.13, *) {
-            encoder.outputFormatting = .sortedKeys
-        }
-        
-        guard let currentScheduleData = try? encoder.encode(schedule),
-              cache.scheduleData == currentScheduleData else {
-            return nil
-        }
-        
-        return cache.times
-    }
-    
-    private func saveCachedSchedule(_ times: [Date], for date: Date, schedule: Schedule) {
-        let encoder = JSONEncoder()
-        if #available(iOS 11.0, macOS 10.13, *) {
-            encoder.outputFormatting = .sortedKeys
-        }
-        
-        guard let scheduleData = try? encoder.encode(schedule) else { return }
-        let cache = CachedSchedule(date: date, scheduleData: scheduleData, times: times)
-        if let data = try? encoder.encode(cache) {
-            UserDefaults.standard.set(data, forKey: "CachedSchedule")
-        }
-    }
-
-    /// Calculate notification times for all entries
-    private func calculateNotificationTimes(for entries: [ScheduledEntry], schedule: Schedule) -> [Date] {
-        let calendar = Calendar.current
-        let now = Date()
-        
-        // Get start/end times for today
-        let startComponents = calendar.dateComponents([.hour, .minute], from: schedule.startTime)
-        let endComponents = calendar.dateComponents([.hour, .minute], from: schedule.endTime)
-        
-        guard let startHour = startComponents.hour, let startMinute = startComponents.minute,
-              let endHour = endComponents.hour, let endMinute = endComponents.minute else {
-            return []
-        }
-        
-        let todayStart = calendar.date(bySettingHour: startHour, minute: startMinute, second: 0, of: now)!
-        let todayEnd = calendar.date(bySettingHour: endHour, minute: endMinute, second: 0, of: now)!
-        
-        // Determine if we should schedule for today or tomorrow
-        let useToday = now < todayEnd
-        let targetStart = useToday ? todayStart : calendar.date(byAdding: .day, value: 1, to: todayStart)!
-        let targetEnd = useToday ? todayEnd : calendar.date(byAdding: .day, value: 1, to: todayEnd)!
-        
-        // Check cache first
-        if let cachedTimes = getCachedSchedule(for: targetStart, schedule: schedule) {
-            return cachedTimes
-        }
-
-        // Separate entries by time mode
-        var specificTimes: [Date] = []
-        var randomCount = 0
-        
-        for entry in entries {
-            switch entry.timeMode {
-            case .specific(let hour, let minute):
-                // For specific times, we always try to schedule for today first
-                if let specificTimeToday = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: now) {
-                    if specificTimeToday > now {
-                        // It's in the future today, so use it
-                        specificTimes.append(specificTimeToday)
-                    } else {
-                        // It's in the past today, so schedule for tomorrow
-                        if let tomorrowTime = calendar.date(byAdding: .day, value: 1, to: specificTimeToday) {
-                            specificTimes.append(tomorrowTime)
-                        }
-                    }
-                }
-            case .random:
-                randomCount += 1
-            }
-        }
-        
-        // Calculate random times with intelligent spacing
-        let randomTimes = calculateRandomTimes(count: randomCount, start: targetStart, end: targetEnd, avoid: specificTimes)
-        
-        // Combine and sort all times, then return in original entry order
-        var allTimes: [Date] = []
-        var randomIndex = 0
-        
-        for entry in entries {
-            switch entry.timeMode {
-            case .specific:
-                if let time = specificTimes.first {
-                    allTimes.append(time)
-                    specificTimes.removeFirst()
-                }
-            case .random:
-                if randomIndex < randomTimes.count {
-                    allTimes.append(randomTimes[randomIndex])
-                    randomIndex += 1
-                }
-            }
-        }
-        
-        // Save to cache
-        saveCachedSchedule(allTimes, for: targetStart, schedule: schedule)
-        
-        return allTimes
     }
     
     /// Calculate random times with intelligent spacing
@@ -471,6 +449,10 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
 
     /// Verify that a notification is scheduled within the next 24 hours
     /// If not, clear all notifications and reschedule
+    ///
+    /// With repeating triggers every entry fires daily, so a healthy install
+    /// always has something due within 24 hours. This is a safety net for
+    /// cases where the pending requests were lost (e.g. device restore)
     func verifyNotificationScheduled() {
         logger.info("verify_notifications")
         getNextScheduledNotification { nextDate in
@@ -554,8 +536,13 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         }
         #elseif os(macOS)
         // Use NSBackgroundActivityScheduler on macOS
-        // Invalidate any existing scheduler before creating a new one
-        backgroundActivityScheduler?.invalidate()
+        // The scheduler repeats indefinitely, so keep the existing one if
+        // already configured. Recreating it here would invalidate it from
+        // inside its own execution block when rescheduling
+        if backgroundActivityScheduler != nil {
+            logger.debug("background_activity", metadata: ["platform": "macos", "status": "already_configured"])
+            return
+        }
 
         let scheduler = NSBackgroundActivityScheduler(identifier: Self.backgroundTaskIdentifier)
         scheduler.repeats = true
@@ -580,25 +567,10 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
                 return
             }
 
-            // Verify and reschedule notifications if needed
-            self.getNextScheduledNotification { nextDate in
-                let now = Date()
-                let twentyFourHoursFromNow = now.addingTimeInterval(24 * 60 * 60)
-
-                if let nextDate = nextDate, nextDate <= twentyFourHoursFromNow {
-                    self.logger.info("background_activity", metadata: [
-                        "platform": "macos",
-                        "status": "skipped",
-                        "reason": "already_scheduled",
-                        "next_date": "\(nextDate)"
-                    ])
-                    completion(.finished)
-                    return
-                }
-
-                self.logger.info("background_activity", metadata: ["platform": "macos", "status": "rescheduling"])
-                // Need to reschedule notifications
-                self.scheduleNextNotification()
+            // Delivery doesn't depend on this activity ever running: all
+            // requests use repeating triggers. Rescheduling here re-resolves
+            // random phrases and times so variety stays fresh.
+            self.scheduleNextNotification {
                 completion(.finished)
             }
         }
@@ -631,37 +603,10 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
             task.setTaskCompleted(success: false)
         }
 
-        // Verify and reschedule notifications if needed
-        getNextScheduledNotification { nextDate in
-            let now = Date()
-            let twentyFourHoursFromNow = now.addingTimeInterval(24 * 60 * 60)
-
-            if let nextDate = nextDate, nextDate <= twentyFourHoursFromNow {
-                self.logger.info("background_task", metadata: [
-                    "platform": "ios",
-                    "status": "skipped",
-                    "reason": "already_scheduled",
-                    "next_date": "\(nextDate)",
-                    "hours_from_now": "\(nextDate.timeIntervalSince(now) / 3600)"
-                ])
-                task.setTaskCompleted(success: true)
-                return
-            }
-
-            if let nextDate = nextDate {
-                self.logger.info("background_task", metadata: [
-                    "platform": "ios",
-                    "status": "rescheduling",
-                    "reason": "stale",
-                    "next_date": "\(nextDate)",
-                    "hours_from_now": "\(nextDate.timeIntervalSince(now) / 3600)"
-                ])
-            } else {
-                self.logger.info("background_task", metadata: ["platform": "ios", "status": "rescheduling", "reason": "empty"])
-            }
-
-            // Need to reschedule notifications
-            self.scheduleNextNotification()
+        // Delivery doesn't depend on this task ever running: all requests use
+        // repeating triggers. Rescheduling here re-resolves random phrases and
+        // times so variety stays fresh on long-unopened installs.
+        scheduleNextNotification {
             self.logger.info("background_task", metadata: ["platform": "ios", "status": "complete"])
             task.setTaskCompleted(success: true)
         }
