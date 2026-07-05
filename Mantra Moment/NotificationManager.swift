@@ -71,7 +71,9 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
     
     func requestAuthorization() {
         logger.info("authorization_request")
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge, .criticalAlert]) { granted, error in
+        // .criticalAlert requires an Apple-granted entitlement this app doesn't
+        // have, and requesting it without one fails the entire authorization
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
             self.logger.info("authorization_response", metadata: ["granted": "\(granted)", "error": "\(error?.localizedDescription ?? "none")"])
             DispatchQueue.main.async {
                 self.checkAuthorization()
@@ -95,7 +97,8 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         content.title = "Mantra Test"
         content.body = "This is a test notification. You got this!"
         content.sound = .default
-        content.interruptionLevel = .critical
+        // .critical is silently downgraded without the critical-alerts entitlement
+        content.interruptionLevel = .timeSensitive
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
@@ -280,7 +283,8 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
             content.title = "Mantra"
             content.body = phrase
             content.sound = .default
-            content.interruptionLevel = .critical
+            // .critical is silently downgraded without the critical-alerts entitlement
+            content.interruptionLevel = .timeSensitive
             let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
             return UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
         }
