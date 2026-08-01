@@ -94,7 +94,6 @@ struct SettingsView: View {
                                     .onTapGesture {
                                         editingEntry = entry
                                     }
-                                    .listRowBackground(Color.clear)
                                 }
                                 .onDelete(perform: deleteEntries)
                             }
@@ -102,7 +101,6 @@ struct SettingsView: View {
                             Button(action: { showingAddEntry = true }) {
                                 Label("Add Schedule", systemImage: "plus.circle.fill")
                             }
-                            .listRowBackground(Color.clear)
                         } header: {
                             Text("Schedule")
                                 .font(.headline)
