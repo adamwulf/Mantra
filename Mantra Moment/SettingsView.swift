@@ -6,6 +6,7 @@ import AppKit
 #endif
 
 struct SettingsView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var schedule = Schedule.load()
     @Query private var phrases: [Phrase]
     
@@ -63,13 +64,28 @@ struct SettingsView: View {
                         #endif
 
                         if schedule.isEnabled {
-                            HStack {
-                                DatePicker("Start", selection: $schedule.startTime, displayedComponents: .hourAndMinute)
-                                    .labelsHidden()
-                                Text("to")
-                                    .foregroundColor(.secondary)
-                                DatePicker("End", selection: $schedule.endTime, displayedComponents: .hourAndMinute)
-                                    .labelsHidden()
+                            Group {
+                                if dynamicTypeSize.isAccessibilitySize {
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        Text("Start")
+                                            .foregroundStyle(.secondary)
+                                        DatePicker("Start", selection: $schedule.startTime, displayedComponents: .hourAndMinute)
+                                            .labelsHidden()
+                                        Text("End")
+                                            .foregroundStyle(.secondary)
+                                        DatePicker("End", selection: $schedule.endTime, displayedComponents: .hourAndMinute)
+                                            .labelsHidden()
+                                    }
+                                } else {
+                                    HStack {
+                                        DatePicker("Start", selection: $schedule.startTime, displayedComponents: .hourAndMinute)
+                                            .labelsHidden()
+                                        Text("to")
+                                            .foregroundColor(.secondary)
+                                        DatePicker("End", selection: $schedule.endTime, displayedComponents: .hourAndMinute)
+                                            .labelsHidden()
+                                    }
+                                }
                             }
                             .frame(maxWidth: .infinity, alignment: .center)
                             .onChange(of: schedule.startTime) { _, _ in saveAndSchedule() }
