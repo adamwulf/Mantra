@@ -181,6 +181,9 @@ struct SettingsView: View {
                             exportDebugLogs()
                         }
                     }
+                    #if os(macOS)
+                    .disclosureGroupStyle(SupportDisclosureGroupStyle())
+                    #endif
                 }
             }
             .formStyle(.grouped)
@@ -291,6 +294,37 @@ struct SettingsView: View {
 #endif
     }
 }
+
+#if os(macOS)
+private struct SupportDisclosureGroupStyle: DisclosureGroupStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button {
+                configuration.isExpanded.toggle()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: configuration.isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 12)
+                        .accessibilityHidden(true)
+                    configuration.label
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityValue(configuration.isExpanded ? "Expanded" : "Collapsed")
+
+            if configuration.isExpanded {
+                configuration.content
+                    .padding(.leading, 20)
+            }
+        }
+    }
+}
+#endif
 
 #Preview {
     SettingsView()
