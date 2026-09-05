@@ -6,6 +6,7 @@ import AppKit
 #endif
 
 struct SettingsView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var schedule = Schedule.load()
     @Query private var phrases: [Phrase]
     
@@ -18,6 +19,22 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                #if os(iOS)
+                Section {
+                    NavigationLink {
+                        PhraseListView()
+                    } label: {
+                        HStack {
+                            Label("Phrases", systemImage: "quote.bubble")
+                            Spacer()
+                            Text(phrases.count, format: .number)
+                                .foregroundStyle(.secondary)
+                                .accessibilityLabel(phrases.count == 1 ? "1 phrase" : "\(phrases.count) phrases")
+                        }
+                    }
+                }
+                #endif
+
                 if notificationManager.authorizationStatus == .denied {
                     Section {
                         VStack(alignment: .leading, spacing: 8) {
@@ -47,20 +64,35 @@ struct SettingsView: View {
                         #endif
 
                         if schedule.isEnabled {
-                            HStack {
-                                DatePicker("Start", selection: $schedule.startTime, displayedComponents: .hourAndMinute)
-                                    .labelsHidden()
-                                Text("to")
-                                    .foregroundColor(.secondary)
-                                DatePicker("End", selection: $schedule.endTime, displayedComponents: .hourAndMinute)
-                                    .labelsHidden()
+                            Group {
+                                if dynamicTypeSize.isAccessibilitySize {
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        Text("Start")
+                                            .foregroundStyle(.secondary)
+                                        DatePicker("Start", selection: $schedule.startTime, displayedComponents: .hourAndMinute)
+                                            .labelsHidden()
+                                        Text("End")
+                                            .foregroundStyle(.secondary)
+                                        DatePicker("End", selection: $schedule.endTime, displayedComponents: .hourAndMinute)
+                                            .labelsHidden()
+                                    }
+                                } else {
+                                    HStack {
+                                        DatePicker("Start", selection: $schedule.startTime, displayedComponents: .hourAndMinute)
+                                            .labelsHidden()
+                                        Text("to")
+                                            .foregroundColor(.secondary)
+                                        DatePicker("End", selection: $schedule.endTime, displayedComponents: .hourAndMinute)
+                                            .labelsHidden()
+                                    }
+                                }
                             }
                             .frame(maxWidth: .infinity, alignment: .center)
                             .onChange(of: schedule.startTime) { _, _ in saveAndSchedule() }
                             .onChange(of: schedule.endTime) { _, _ in saveAndSchedule() }
                         }
                     } header: {
-                        Text("General")
+                        Text("Reminders")
                             .font(.headline)
                     } footer: {
                         if schedule.isEnabled {
@@ -78,7 +110,7 @@ struct SettingsView: View {
                         
                         Section {
                             if schedule.scheduledEntries.isEmpty {
-                                Text("No scheduled entries")
+                                Text("No reminders scheduled")
                                     .foregroundColor(.secondary)
                                     .italic()
                             } else {
@@ -99,7 +131,7 @@ struct SettingsView: View {
                             }
                             
                             Button(action: { showingAddEntry = true }) {
-                                Label("Add Schedule", systemImage: "plus.circle.fill")
+                                Label("Add Reminder", systemImage: "plus.circle.fill")
                             }
                         } header: {
                             Text("Schedule")
@@ -116,47 +148,56 @@ struct SettingsView: View {
                         Section(header: Text("Status").font(.headline)) {
                             if let nextDate = notificationManager.nextNotificationDate {
                                 HStack {
-                                    Text("Next Notification")
+                                    Text("Next Reminder")
                                     Spacer()
                                     Text(nextDate, style: .relative)
                                         .foregroundColor(.secondary)
                                 }
                             } else {
-                                Text("No notification scheduled")
+                                Text("No reminder scheduled")
                                     .foregroundColor(.secondary)
                             }
+                        }
+                    }
+                }
 
-                            HStack {
-                                Text("Background Refresh")
-                                Spacer()
-                                Text(notificationManager.backgroundRefreshStatus.rawValue)
-                                    .foregroundColor(backgroundRefreshStatusColor)
-                                    .font(.caption)
-                            }
+                #if os(macOS)
+                Divider()
+                    .padding(.vertical, 8)
+                #endif
 
+                Section {
+                    DisclosureGroup("Support") {
+                        HStack {
+                            Text("Background Refresh")
+                            Spacer()
+                            Text(notificationManager.backgroundRefreshStatus.rawValue)
+                                .foregroundColor(backgroundRefreshStatusColor)
+                                .font(.caption)
+                        }
+
+                        if schedule.isEnabled && notificationManager.authorizationStatus != .denied {
                             Button(testNotificationButtonTitle) {
                                 sendTestNotification()
                             }
                             .disabled(testNotificationCountdown > 0)
                         }
 
-#if os(macOS)
-                        Divider()
-                            .padding(.vertical, 8)
-#endif
-
-                        Section(header: Text("Debug").font(.headline)) {
-                            Button("Export Debug Logs") {
-                                exportDebugLogs()
-                            }
+                        Button("Export Debug Logs") {
+                            exportDebugLogs()
                         }
                     }
                 }
             }
+            #if os(iOS)
+            .formStyle(.grouped)
+            .navigationTitle("Mantra")
+            #else
             .padding()
             .scrollContentBackground(.hidden)
             .background(Color.clear)
             .navigationTitle("Settings")
+            #endif
             .sheet(isPresented: $showingAddEntry) {
                 ScheduledEntryEditView(entry: nil) { newEntry in
                     addEntry(newEntry)

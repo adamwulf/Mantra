@@ -63,7 +63,11 @@ struct ScheduledEntryEditView: View {
                     }
                 }
             }
-            .navigationTitle(entry == nil ? "Add Entry" : "Edit Entry")
+            #if os(iOS)
+            .formStyle(.grouped)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .navigationTitle(entry == nil ? "Add Reminder" : "Edit Reminder")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {

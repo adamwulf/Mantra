@@ -15,7 +15,8 @@ struct ScheduledEntryRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(entry.phraseDisplayText(phrases: phrases))
                     .font(.body)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
                 
                 HStack(spacing: 4) {
                     Image(systemName: timeIconName)
@@ -28,7 +29,7 @@ struct ScheduledEntryRow: View {
             
             Spacer()
             
-            Toggle("", isOn: Binding(
+            Toggle("Enable reminder: \(entry.phraseDisplayText(phrases: phrases))", isOn: Binding(
                 get: { entry.isEnabled },
                 set: { onToggle($0) }
             ))
