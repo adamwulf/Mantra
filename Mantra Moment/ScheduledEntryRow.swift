@@ -4,8 +4,34 @@ struct ScheduledEntryRow: View {
     let entry: ScheduledEntry
     let phrases: [UUID: String]
     let onToggle: (Bool) -> Void
+    let onEdit: () -> Void
     
     var body: some View {
+        HStack(spacing: 12) {
+            #if os(macOS)
+            Button(action: onEdit) {
+                reminderLabel
+            }
+            .buttonStyle(.plain)
+            .help("Edit Reminder")
+            #else
+            reminderLabel
+            #endif
+
+            Toggle("Enable reminder: \(entry.phraseDisplayText(phrases: phrases))", isOn: Binding(
+                get: { entry.isEnabled },
+                set: { onToggle($0) }
+            ))
+            .labelsHidden()
+        }
+        .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        #if os(iOS)
+        .onTapGesture(perform: onEdit)
+        #endif
+    }
+
+    private var reminderLabel: some View {
         HStack(spacing: 12) {
             Image(systemName: phraseIconName)
                 .font(.title2)
@@ -28,14 +54,8 @@ struct ScheduledEntryRow: View {
             }
             
             Spacer()
-            
-            Toggle("Enable reminder: \(entry.phraseDisplayText(phrases: phrases))", isOn: Binding(
-                get: { entry.isEnabled },
-                set: { onToggle($0) }
-            ))
-            .labelsHidden()
         }
-        .padding(.vertical, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
     }
     

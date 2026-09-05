@@ -53,7 +53,7 @@ struct MantraApp: App {
                     let window = NSWindow(contentViewController: hostingController)
                     window.identifier = NSUserInterfaceItemIdentifier("main")
                     window.title = "Mantra"
-                    window.setContentSize(NSSize(width: 600, height: 500))
+                    window.setContentSize(NSSize(width: 600, height: 700))
                     window.center()
                     window.makeKeyAndOrderFront(nil)
                 }

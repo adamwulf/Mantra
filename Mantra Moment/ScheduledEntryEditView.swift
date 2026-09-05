@@ -63,8 +63,8 @@ struct ScheduledEntryEditView: View {
                     }
                 }
             }
-            #if os(iOS)
             .formStyle(.grouped)
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .navigationTitle(entry == nil ? "Add Reminder" : "Edit Reminder")
@@ -82,6 +82,9 @@ struct ScheduledEntryEditView: View {
                 }
             }
         }
+        #if os(macOS)
+        .frame(minWidth: 440, minHeight: 320)
+        #endif
         .onAppear {
             loadEntry()
         }

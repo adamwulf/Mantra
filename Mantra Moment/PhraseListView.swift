@@ -14,8 +14,50 @@ struct PhraseListView: View {
     @FocusState private var focusedPhraseID: UUID?
     
     var body: some View {
-        List {
-            ForEach(phrases) { phrase in
+        Group {
+            #if os(macOS)
+            Form {
+                Section {
+                    phraseRows
+                } footer: {
+                    Text("Click a phrase to edit it. Control-click for more options.")
+                }
+            }
+            .formStyle(.grouped)
+            #else
+            List {
+                phraseRows
+            }
+            .listStyle(.insetGrouped)
+            #endif
+        }
+        .navigationTitle("Phrases")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button(action: { showingAddPhrase = true }) {
+                    Label("Add Phrase", systemImage: "plus")
+                }
+                .help("Add Phrase")
+            }
+        }
+        .alert("New Phrase", isPresented: $showingAddPhrase) {
+            TextField("Enter phrase", text: $newPhraseText)
+            Button("Cancel", role: .cancel) { newPhraseText = "" }
+            Button("Add") {
+                addPhrase()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var phraseRows: some View {
+        #if os(macOS)
+        if phrases.isEmpty {
+            ContentUnavailableView("No Phrases", systemImage: "quote.bubble", description: Text("Add a phrase to use in your reminders."))
+        }
+        #endif
+        ForEach(phrases) { phrase in
+            Group {
                 if editingPhrase?.id == phrase.id {
                     TextField("Enter phrase", text: $editingPhraseText)
                         .focused($focusedPhraseID, equals: phrase.id)
@@ -28,34 +70,37 @@ struct PhraseListView: View {
                         }
                     #endif
                 } else {
+                    #if os(macOS)
+                    Button {
+                        startEditing(phrase)
+                    } label: {
+                        Text(phrase.text)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("Edit Phrase")
+                    #else
                     Text(phrase.text)
                         .onTapGesture {
                             startEditing(phrase)
                         }
+                    #endif
                 }
             }
-            .onDelete(perform: deletePhrases)
-        }
-        #if os(iOS)
-        .listStyle(.insetGrouped)
-        #else
-        .scrollContentBackground(.hidden)
-        #endif
-        .navigationTitle("Phrases")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button(action: { showingAddPhrase = true }) {
-                    Label("Add Phrase", systemImage: "plus")
+            #if os(macOS)
+            .padding(.vertical, 6)
+            .contextMenu {
+                Button("Edit Phrase") { startEditing(phrase) }
+                Button("Delete Phrase", role: .destructive) {
+                    if let index = phrases.firstIndex(where: { $0.id == phrase.id }) {
+                        deletePhrases(offsets: IndexSet(integer: index))
+                    }
                 }
             }
+            #endif
         }
-        .alert("New Phrase", isPresented: $showingAddPhrase) {
-            TextField("Enter phrase", text: $newPhraseText)
-            Button("Cancel", role: .cancel) { newPhraseText = "" }
-            Button("Add") {
-                addPhrase()
-            }
-        }
+        .onDelete(perform: deletePhrases)
     }
     
     private func addPhrase() {
