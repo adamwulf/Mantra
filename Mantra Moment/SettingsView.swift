@@ -19,7 +19,6 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                #if os(iOS)
                 Section {
                     NavigationLink {
                         PhraseListView()
@@ -33,7 +32,6 @@ struct SettingsView: View {
                         }
                     }
                 }
-                #endif
 
                 if notificationManager.authorizationStatus == .denied {
                     Section {
@@ -58,10 +56,6 @@ struct SettingsView: View {
                                 }
                                 saveAndSchedule()
                             }
-
-                        #if os(macOS)
-                        LaunchAtLoginView()
-                        #endif
 
                         if schedule.isEnabled {
                             Group {
@@ -103,11 +97,6 @@ struct SettingsView: View {
                     }
                     
                     if schedule.isEnabled {
-#if os(macOS)
-                        Divider()
-                            .padding(.vertical, 8)
-#endif
-                        
                         Section {
                             if schedule.scheduledEntries.isEmpty {
                                 Text("No reminders scheduled")
@@ -120,12 +109,21 @@ struct SettingsView: View {
                                         phrases: phraseDictionary,
                                         onToggle: { isEnabled in
                                             toggleEntry(entry, isEnabled: isEnabled)
+                                        },
+                                        onEdit: {
+                                            editingEntry = entry
                                         }
                                     )
-                                    .contentShape(Rectangle())
-                                    .onTapGesture {
-                                        editingEntry = entry
+                                    #if os(macOS)
+                                    .contextMenu {
+                                        Button("Edit Reminder") { editingEntry = entry }
+                                        Button("Delete Reminder", role: .destructive) {
+                                            if let index = schedule.scheduledEntries.firstIndex(where: { $0.id == entry.id }) {
+                                                deleteEntries(offsets: IndexSet(integer: index))
+                                            }
+                                        }
                                     }
+                                    #endif
                                 }
                                 .onDelete(perform: deleteEntries)
                             }
@@ -140,11 +138,6 @@ struct SettingsView: View {
                     }
                     
                     if schedule.isEnabled {
-#if os(macOS)
-                        Divider()
-                            .padding(.vertical, 8)
-#endif
-                        
                         Section(header: Text("Status").font(.headline)) {
                             if let nextDate = notificationManager.nextNotificationDate {
                                 HStack {
@@ -162,8 +155,9 @@ struct SettingsView: View {
                 }
 
                 #if os(macOS)
-                Divider()
-                    .padding(.vertical, 8)
+                Section("Startup") {
+                    LaunchAtLoginView()
+                }
                 #endif
 
                 Section {
@@ -187,15 +181,16 @@ struct SettingsView: View {
                             exportDebugLogs()
                         }
                     }
+                    #if os(macOS)
+                    .disclosureGroupStyle(SupportDisclosureGroupStyle())
+                    #endif
                 }
             }
-            #if os(iOS)
             .formStyle(.grouped)
+            #if os(iOS)
             .navigationTitle("Mantra")
             #else
-            .padding()
-            .scrollContentBackground(.hidden)
-            .background(Color.clear)
+            .toggleStyle(.switch)
             .navigationTitle("Settings")
             #endif
             .sheet(isPresented: $showingAddEntry) {
@@ -299,6 +294,37 @@ struct SettingsView: View {
 #endif
     }
 }
+
+#if os(macOS)
+private struct SupportDisclosureGroupStyle: DisclosureGroupStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button {
+                configuration.isExpanded.toggle()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: configuration.isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 12)
+                        .accessibilityHidden(true)
+                    configuration.label
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityValue(configuration.isExpanded ? "Expanded" : "Collapsed")
+
+            if configuration.isExpanded {
+                configuration.content
+                    .padding(.leading, 20)
+            }
+        }
+    }
+}
+#endif
 
 #Preview {
     SettingsView()
