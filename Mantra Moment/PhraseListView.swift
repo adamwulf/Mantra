@@ -14,44 +14,46 @@ struct PhraseListView: View {
     @FocusState private var focusedPhraseID: UUID?
     
     var body: some View {
-        NavigationStack {
-            List {
-                ForEach(phrases) { phrase in
-                    if editingPhrase?.id == phrase.id {
-                        TextField("Enter phrase", text: $editingPhraseText)
-                            .focused($focusedPhraseID, equals: phrase.id)
-                            .onSubmit {
-                                saveEditedPhrase()
-                            }
-                        #if os(macOS)
-                            .onExitCommand {
-                                cancelEditing()
-                            }
-                        #endif
-                    } else {
-                        Text(phrase.text)
-                            .onTapGesture {
-                                startEditing(phrase)
-                            }
-                    }
-                }
-                .onDelete(perform: deletePhrases)
-            }
-            .scrollContentBackground(.hidden)
-            .navigationTitle("Phrases")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button(action: { showingAddPhrase = true }) {
-                        Label("Add Phrase", systemImage: "plus")
-                    }
+        List {
+            ForEach(phrases) { phrase in
+                if editingPhrase?.id == phrase.id {
+                    TextField("Enter phrase", text: $editingPhraseText)
+                        .focused($focusedPhraseID, equals: phrase.id)
+                        .onSubmit {
+                            saveEditedPhrase()
+                        }
+                    #if os(macOS)
+                        .onExitCommand {
+                            cancelEditing()
+                        }
+                    #endif
+                } else {
+                    Text(phrase.text)
+                        .onTapGesture {
+                            startEditing(phrase)
+                        }
                 }
             }
-            .alert("New Phrase", isPresented: $showingAddPhrase) {
-                TextField("Enter phrase", text: $newPhraseText)
-                Button("Cancel", role: .cancel) { newPhraseText = "" }
-                Button("Add") {
-                    addPhrase()
+            .onDelete(perform: deletePhrases)
+        }
+        #if os(iOS)
+        .listStyle(.insetGrouped)
+        #else
+        .scrollContentBackground(.hidden)
+        #endif
+        .navigationTitle("Phrases")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button(action: { showingAddPhrase = true }) {
+                    Label("Add Phrase", systemImage: "plus")
                 }
+            }
+        }
+        .alert("New Phrase", isPresented: $showingAddPhrase) {
+            TextField("Enter phrase", text: $newPhraseText)
+            Button("Cancel", role: .cancel) { newPhraseText = "" }
+            Button("Add") {
+                addPhrase()
             }
         }
     }
@@ -106,6 +108,8 @@ struct PhraseListView: View {
 }
 
 #Preview {
-    PhraseListView()
-        .modelContainer(for: Phrase.self, inMemory: true)
+    NavigationStack {
+        PhraseListView()
+    }
+    .modelContainer(for: Phrase.self, inMemory: true)
 }
