@@ -78,6 +78,10 @@ struct PhraseListView: View {
                             saveEditedPhrase()
                         }
                     #if os(macOS)
+                        .labelsHidden()
+                        .textFieldStyle(.plain)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .onExitCommand {
                             cancelEditing()
                         }
