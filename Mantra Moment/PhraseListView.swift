@@ -37,6 +37,7 @@ struct PhraseListView: View {
             #if os(macOS)
             ToolbarItem(placement: .navigation) {
                 Button {
+                    saveEditedPhrase()
                     dismiss()
                 } label: {
                     Label("Back to Settings", systemImage: "chevron.left")
@@ -47,7 +48,10 @@ struct PhraseListView: View {
             }
             #endif
             ToolbarItem(placement: .primaryAction) {
-                Button(action: { showingAddPhrase = true }) {
+                Button {
+                    saveEditedPhrase()
+                    showingAddPhrase = true
+                } label: {
                     Label("Add Phrase", systemImage: "plus")
                 }
                 .help("Add Phrase")
@@ -59,6 +63,16 @@ struct PhraseListView: View {
             Button("Add") {
                 addPhrase()
             }
+        }
+        .onChange(of: focusedPhraseID) { oldValue, newValue in
+            // A row switch can deliver the old field's focus event after the
+            // next draft has opened. Only commit the draft that lost focus.
+            if let oldValue, oldValue != newValue, editingPhrase?.id == oldValue {
+                saveEditedPhrase()
+            }
+        }
+        .onDisappear {
+            saveEditedPhrase()
         }
     }
 
@@ -129,6 +143,8 @@ struct PhraseListView: View {
     }
     
     private func startEditing(_ phrase: Phrase) {
+        guard editingPhrase?.id != phrase.id else { return }
+        saveEditedPhrase()
         editingPhrase = phrase
         editingPhraseText = phrase.text
         focusedPhraseID = phrase.id
@@ -141,21 +157,27 @@ struct PhraseListView: View {
     }
     
     private func saveEditedPhrase() {
-        guard let phrase = editingPhrase, !editingPhraseText.isEmpty else {
+        guard let phrase = editingPhrase else { return }
+        guard !editingPhraseText.isEmpty else {
             cancelEditing()
             return
         }
+        let hasChanges = phrase.text != editingPhraseText
         phrase.text = editingPhraseText
-        editingPhrase = nil
-        editingPhraseText = ""
-        focusedPhraseID = nil
-        cachePhrases()
+        cancelEditing()
+        if hasChanges {
+            cachePhrases()
+        }
     }
     
     private func deletePhrases(offsets: IndexSet) {
         withAnimation {
             for index in offsets {
-                modelContext.delete(phrases[index])
+                let phrase = phrases[index]
+                if editingPhrase?.id == phrase.id {
+                    cancelEditing()
+                }
+                modelContext.delete(phrase)
             }
         }
         cachePhrases()
