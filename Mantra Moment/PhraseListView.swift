@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct PhraseListView: View {
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Phrase.createdAt, order: .reverse) private var phrases: [Phrase]
     
@@ -33,6 +34,18 @@ struct PhraseListView: View {
         }
         .navigationTitle("Phrases")
         .toolbar {
+            #if os(macOS)
+            ToolbarItem(placement: .navigation) {
+                Button {
+                    dismiss()
+                } label: {
+                    Label("Back to Settings", systemImage: "chevron.left")
+                        .labelStyle(.iconOnly)
+                }
+                .help("Back to Settings")
+                .keyboardShortcut("[", modifiers: .command)
+            }
+            #endif
             ToolbarItem(placement: .primaryAction) {
                 Button(action: { showingAddPhrase = true }) {
                     Label("Add Phrase", systemImage: "plus")
