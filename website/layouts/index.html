@@ -38,6 +38,36 @@
       </section>
     </main>
 
+    <section class="showcase" aria-labelledby="showcase-title">
+      <div class="showcase-inner">
+        <p class="showcase-eyebrow">On Mac and iPhone</p>
+        <h2 id="showcase-title">The same calm,<br><span>on every screen.</span></h2>
+        <p class="showcase-lead">
+          Choose your words once. Mantra Moment lives in your Mac menu bar and
+          rides along on your iPhone, delivering each reminder right on time.
+        </p>
+
+        <div class="devices">
+          <figure class="laptop">
+            <div class="laptop-lid">
+              <div class="laptop-screen">
+                <img src="{{ "images/screenshot-mac.png" | relURL }}" width="1424" height="1792"
+                     alt="Mantra Moment open on a Mac, showing the list of phrases.">
+              </div>
+            </div>
+            <div class="laptop-base"><span class="laptop-notch"></span></div>
+          </figure>
+
+          <figure class="phone">
+            <div class="phone-screen">
+              <img src="{{ "images/screenshot-iphone.png" | relURL }}" width="1206" height="2622"
+                   alt="Mantra Moment on iPhone, showing reminders scheduled through the day.">
+            </div>
+          </figure>
+        </div>
+      </div>
+    </section>
+
     <footer>
       <p>&copy; {{ now.Year }} Mantra Moment</p>
     </footer>
