@@ -4,16 +4,18 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="{{ site.Params.description }}">
-    <meta name="theme-color" content="#087ed8">
+    <meta name="theme-color" content="#103b70">
     <title>{{ site.Title }}</title>
     <link rel="stylesheet" href="{{ "css/site.css" | relURL }}">
+    <link rel="icon" type="image/png" href="{{ "images/app-icon.png" | relURL }}">
   </head>
   <body>
     <main class="page-shell">
       <section class="hero" aria-labelledby="hero-title">
-        <div class="app-mark" aria-hidden="true">🧘‍♀️</div>
+        <img class="app-mark" src="{{ "images/app-icon.png" | relURL }}" width="112" height="112" alt="" fetchpriority="high">
+        <p class="app-name">Mantra Moment</p>
         <p class="eyebrow">For iPhone, iPad, and Mac</p>
-        <h1 id="hero-title">A thoughtful word,<br>right when you need it.</h1>
+        <h1 id="hero-title">A thoughtful word,<br><span>right when you need it.</span></h1>
         <p class="intro">
           Mantra Moment sends gentle reminders throughout your day, using the
           phrases and schedule you choose.
@@ -21,16 +23,16 @@
 
         <ul class="features" aria-label="Highlights">
           <li>
-            <span aria-hidden="true">✦</span>
-            Write reminders in your own words
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5M4 15 16 3l5 5L9 20l-6 1 1-6Z"/></svg>
+            <div><h2>Your words</h2><p>Write reminders that mean something to you.</p></div>
           </li>
           <li>
-            <span aria-hidden="true">◷</span>
-            Choose when they arrive
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            <div><h2>Your rhythm</h2><p>Choose when a little encouragement arrives.</p></div>
           </li>
           <li>
-            <span aria-hidden="true">♡</span>
-            Keep your attention on what matters
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0l-1 1-1-1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg>
+            <div><h2>A moment for you</h2><p>Keep your attention on what matters.</p></div>
           </li>
         </ul>
       </section>
