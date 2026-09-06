@@ -3,6 +3,7 @@
   --ink: #092842;
   --muted: #49677e;
   --blue: #087ed8;
+  --blue-ink: #075a96;
   --blue-light: #79c9ff;
   --paper: #f8fcff;
   --line: rgba(8, 126, 216, 0.16);
@@ -31,6 +32,7 @@ body {
 .page-shell {
   width: min(100% - 2rem, 64rem);
   min-height: calc(100vh - 5rem);
+  min-height: calc(100dvh - 5rem);
   margin-inline: auto;
   display: grid;
   place-items: center;
@@ -57,7 +59,7 @@ body {
 
 .eyebrow {
   margin: 0 0 1.25rem;
-  color: var(--blue);
+  color: var(--blue-ink);
   font-size: 0.875rem;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -137,13 +139,5 @@ footer p {
   .features li + li {
     border-top: 1px solid var(--line);
     border-left: 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
   }
 }
