@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="{{ site.Language.LanguageCode }}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="{{ site.Params.description }}">
+    <meta name="theme-color" content="#087ed8">
+    <title>{{ site.Title }}</title>
+    <link rel="stylesheet" href="{{ "css/site.css" | relURL }}">
+  </head>
+  <body>
+    <main class="page-shell">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="app-mark" aria-hidden="true">🧘‍♀️</div>
+        <p class="eyebrow">For iPhone, iPad, and Mac</p>
+        <h1 id="hero-title">A thoughtful word,<br>right when you need it.</h1>
+        <p class="intro">
+          Mantra Moment sends gentle reminders throughout your day, using the
+          phrases and schedule you choose.
+        </p>
+
+        <ul class="features" aria-label="Highlights">
+          <li>
+            <span aria-hidden="true">✦</span>
+            Write reminders in your own words
+          </li>
+          <li>
+            <span aria-hidden="true">◷</span>
+            Choose when they arrive
+          </li>
+          <li>
+            <span aria-hidden="true">♡</span>
+            Keep your attention on what matters
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <footer>
+      <p>&copy; {{ now.Year }} Mantra Moment</p>
+    </footer>
+  </body>
+</html>

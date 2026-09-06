@@ -1,0 +1,7 @@
+baseURL = "/"
+languageCode = "en-us"
+title = "Mantra Moment"
+disableKinds = ["taxonomy", "term", "RSS"]
+
+[params]
+description = "Thoughtful reminders, delivered throughout your day."
