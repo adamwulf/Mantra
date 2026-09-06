@@ -185,8 +185,10 @@ h1 span {
 }
 
 .laptop-lid {
-  padding: 0.6rem;
-  border-radius: 0.85rem;
+  width: 90%;
+  margin-inline: auto;
+  padding: 1.3%;
+  border-radius: clamp(0.4rem, 1vw, 0.85rem);
   background: linear-gradient(160deg, #23272d, #0c1013);
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.06),
@@ -194,29 +196,27 @@ h1 span {
 }
 
 .laptop-screen {
+  position: relative;
   aspect-ratio: 16 / 10;
   overflow: hidden;
   border-radius: 0.3rem;
-  display: grid;
-  place-items: center;
-  padding: 4%;
   background:
     radial-gradient(ellipse at 50% -8%, rgba(196, 229, 255, 0.5), transparent 60%),
     linear-gradient(158deg, #6aa1da 0%, #4880bd 48%, #325f97 100%);
 }
 
 .laptop-screen img {
+  position: absolute;
+  inset: 4%;
   display: block;
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
+  width: 92%;
+  height: 92%;
   object-fit: contain;
 }
 
 .laptop-base {
   position: relative;
-  width: 111%;
+  width: 100%;
   height: clamp(0.55rem, 1.4vw, 0.85rem);
   margin-inline: auto;
   background: linear-gradient(#d6dde4, #aab3bd 45%, #7c8791);
@@ -264,7 +264,7 @@ h1 span {
   .devices {
     flex-direction: column;
     align-items: center;
-    gap: 0;
+    gap: 1.5rem;
     max-width: 20rem;
   }
 
@@ -275,7 +275,7 @@ h1 span {
 
   .phone {
     width: 55%;
-    margin: -2.25rem 0 0;
+    margin: 0;
   }
 }
 
