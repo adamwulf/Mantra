@@ -8,6 +8,7 @@
     <title>{{ site.Title }}</title>
     <link rel="stylesheet" href="{{ "css/site.css" | relURL }}">
     <link rel="icon" type="image/png" href="{{ "images/app-icon.png" | relURL }}">
+    <script src="{{ "js/notifications.js" | relURL }}" defer></script>
   </head>
   <body>
     <main class="page-shell">
@@ -27,8 +28,22 @@
             <div class="notification-header">
               <span class="notification-app">Mantra Moment</span>
               <span class="notification-time">now</span>
+              <button class="notification-toggle" type="button" aria-label="Pause rotating phrases" hidden>
+                <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2v8M8 2v8"/></svg>
+              </button>
             </div>
-            <p>It's ok to reschedule or say no.</p>
+            <p class="notification-message" aria-live="off">
+              <span class="is-visible">It's ok to reschedule or say no.</span>
+              <span>Slow down. Be methodical.</span>
+              <span>You only see the doors you're facing.</span>
+              <span>Inspiration only shows up when you do.</span>
+              <span>Obstacles are on the way not in the way.</span>
+              <span>Work the problem.</span>
+              <span>Treat every blunder as a gambit.</span>
+              <span>I can slow down. That's ok.</span>
+              <span>Take time to breathe.</span>
+              <span>One step at a time.</span>
+            </p>
           </div>
         </div>
 
