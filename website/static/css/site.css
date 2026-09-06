@@ -1,7 +1,7 @@
 :root {
   color-scheme: dark;
   --ink: #f4faff;
-  --muted: #c8dff4;
+  --muted: #e2f0fc;
   --accent: #a7e4ff;
   --line: rgba(190, 226, 255, 0.2);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
@@ -21,9 +21,9 @@ body {
   margin: 0;
   color: var(--ink);
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(88, 194, 246, 0.42), transparent 58%),
-    radial-gradient(ellipse at 100% 65%, rgba(27, 121, 185, 0.45), transparent 65%),
-    linear-gradient(145deg, #173d78 0%, #12568a 48%, #0c294f 100%);
+    radial-gradient(ellipse at 50% 0%, rgba(88, 194, 246, 0.2), transparent 58%),
+    radial-gradient(ellipse at 100% 65%, rgba(27, 121, 185, 0.25), transparent 65%),
+    linear-gradient(145deg, #173d78 0%, #103e70 48%, #0c294f 100%);
 }
 
 .page-shell {
@@ -100,7 +100,7 @@ h1 span {
   padding: 1.75rem;
   border: 1px solid var(--line);
   border-radius: 1.25rem;
-  background: linear-gradient(145deg, rgba(209, 239, 255, 0.1), rgba(209, 239, 255, 0.025));
+  background: linear-gradient(145deg, rgba(209, 239, 255, 0.06), rgba(209, 239, 255, 0.025));
 }
 
 .features svg {
