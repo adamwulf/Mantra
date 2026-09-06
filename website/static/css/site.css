@@ -85,6 +85,55 @@ h1 span {
   text-wrap: pretty;
 }
 
+.notification-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  width: min(100%, 27rem);
+  margin: 2rem auto 0;
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 1.75rem;
+  background: linear-gradient(145deg, rgba(24, 33, 43, 0.94), rgba(10, 18, 28, 0.96));
+  box-shadow: 0 1rem 2.5rem rgba(2, 14, 33, 0.25);
+  text-align: left;
+}
+
+.notification-preview > img {
+  flex: none;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.75rem;
+}
+
+.notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.notification-app {
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+
+.notification-time {
+  color: #b5bec9;
+  font-size: 0.8125rem;
+}
+
+.notification-content p {
+  margin: 0.25rem 0 0;
+  font-size: 1.0625rem;
+  line-height: 1.4;
+}
+
 .features {
   max-width: 57rem;
   margin: clamp(2.5rem, 5vw, 4rem) auto 0;
