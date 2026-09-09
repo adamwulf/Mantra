@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="{{ site.Language.LanguageCode }}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="{{ .Description }}">
+    <meta name="theme-color" content="#103b70">
+    <meta name="robots" content="noindex">
+    <title>{{ .Title }} | {{ site.Title }}</title>
+    <link rel="stylesheet" href="{{ "css/site.css" | relURL }}">
+    <link rel="icon" type="image/png" href="{{ "images/app-icon.png" | relURL }}">
+  </head>
+  <body class="thank-you-page">
+    <main class="thank-you-shell">
+      <section class="thank-you-card" aria-labelledby="thank-you-title">
+        <img class="app-mark" src="{{ "images/app-icon.png" | relURL }}" width="112" height="112" alt="">
+        <p class="app-name">Mantra Moment</p>
+        <h1 id="thank-you-title">You’re on the list.</h1>
+        <p>Thanks for signing up. We’ll email you when early access is ready.</p>
+        <a href="{{ "" | relURL }}">Back to Mantra Moment</a>
+      </section>
+    </main>
+  </body>
+</html>
