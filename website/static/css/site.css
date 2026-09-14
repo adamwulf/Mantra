@@ -441,12 +441,36 @@ footer {
   padding: 1.5rem;
   display: grid;
   place-items: center;
+  gap: 0.875rem;
   color: var(--muted);
   font-size: 0.875rem;
 }
 
 footer p {
   margin: 0;
+}
+
+.github-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 600;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.github-link:hover {
+  border-color: var(--accent);
+  background: rgba(190, 226, 255, 0.08);
+}
+
+.github-link svg {
+  width: 1.125rem;
+  height: 1.125rem;
 }
 
 .thank-you-page {
